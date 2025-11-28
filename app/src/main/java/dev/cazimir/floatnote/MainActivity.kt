@@ -20,8 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.cazimir.floatnote.service.FloatingBubbleService
+import dev.cazimir.floatnote.ui.MainViewModel
 import dev.cazimir.floatnote.ui.SettingsScreen
 import dev.cazimir.floatnote.ui.theme.FloatNoteTheme
+import org.koin.androidx.compose.koinViewModel
 
 class MainActivity : ComponentActivity() {
     
@@ -43,6 +45,8 @@ class MainActivity : ComponentActivity() {
         checkOverlayPermission()
 
         setContent {
+            val mainViewModel: MainViewModel = koinViewModel()
+
             FloatNoteTheme {
                 // Open Settings when launched with OPEN_SETTINGS extra
                 LaunchedEffect(Unit) {
@@ -51,6 +55,10 @@ class MainActivity : ComponentActivity() {
                         intent.removeExtra("OPEN_SETTINGS")
                     }
                 }
+
+                // reflect onResume values into VM
+                LaunchedEffect(hasOverlayPermission) { mainViewModel.setOverlayPermission(hasOverlayPermission) }
+                LaunchedEffect(isServiceRunning) { mainViewModel.setServiceRunning(isServiceRunning) }
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
