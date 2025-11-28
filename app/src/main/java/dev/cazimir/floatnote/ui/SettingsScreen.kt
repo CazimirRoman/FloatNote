@@ -1,8 +1,12 @@
 package dev.cazimir.floatnote.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,7 +27,8 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val settingsManager = remember { SettingsManager(context) }
     val savedApiKey by settingsManager.apiKeyFlow.collectAsState(initial = "")
-    
+    val savedLanguage by settingsManager.languageFlow.collectAsState(initial = "en-US")
+
     var apiKey by remember(savedApiKey) { mutableStateOf(savedApiKey) }
     // Update local state when flow emits new value if not already modified
     LaunchedEffect(savedApiKey) {
@@ -34,6 +39,18 @@ fun SettingsScreen(
     
     var isApiKeyVisible by remember { mutableStateOf(false) }
     var showSavedMessage by remember { mutableStateOf(false) }
+
+    // Language options (code, label, emoji flag)
+    val languages = listOf(
+        "en-US" to "English (US)" to "🇺🇸",
+        "en-GB" to "English (UK)" to "🇬🇧",
+        "es-ES" to "Spanish" to "🇪🇸",
+        "fr-FR" to "French" to "🇫🇷",
+        "de-DE" to "German" to "🇩🇪",
+        "it-IT" to "Italian" to "🇮🇹",
+        "pt-BR" to "Portuguese (BR)" to "🇧🇷",
+        "hi-IN" to "Hindi" to "🇮🇳"
+    )
 
     Scaffold(
         topBar = {
@@ -116,6 +133,67 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.align(Alignment.End)
                         )
+                    }
+                }
+            }
+
+            Text(
+                text = "Language",
+                style = MaterialTheme.typography.titleLarge
+            )
+
+            Card {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Choose language for speech recognition",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Current selection chip
+                    AssistChip(
+                        onClick = {},
+                        label = {
+                            val selected = languages.firstOrNull { it.first.first == savedLanguage }
+                            Text(text = "${selected?.second ?: "English (US)"} ${selected?.first?.second ?: "🇺🇸"}")
+                        },
+                        leadingIcon = {
+                            Icon(imageVector = Icons.Default.Language, contentDescription = null)
+                        }
+                    )
+
+                    // List of languages
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(languages) { item ->
+                            val (codeLabel, flag) = item.first to item.second
+                            val (code, label) = codeLabel
+                            ElevatedCard(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp)
+                                        .clickable {
+                                            scope.launch { settingsManager.saveLanguage(code) }
+                                        },
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(text = "$flag  $label")
+                                    if (savedLanguage == code) {
+                                        Text(text = "Selected", color = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

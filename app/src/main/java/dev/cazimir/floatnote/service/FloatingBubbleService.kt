@@ -242,7 +242,13 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                         onStartListening = { startListening() },
                         onStopListening = { stopListening() },
                         onRequestPermission = { openMainActivityForPermission() },
-                        onDismiss = {
+                        onDismiss = { removePanelOverlay() },
+                        onOpenSettings = {
+                            val intent = Intent(this@FloatingBubbleService, MainActivity::class.java).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                putExtra("OPEN_SETTINGS", true)
+                            }
+                            startActivity(intent)
                             removePanelOverlay()
                         },
                         onFormatClick = {
@@ -506,4 +512,3 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
         @Volatile var isRunning: Boolean = false
     }
 }
-

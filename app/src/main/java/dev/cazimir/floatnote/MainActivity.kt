@@ -11,19 +11,24 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.cazimir.floatnote.service.FloatingBubbleService
+import dev.cazimir.floatnote.ui.SettingsScreen
 import dev.cazimir.floatnote.ui.theme.FloatNoteTheme
 
 class MainActivity : ComponentActivity() {
     
     private var hasOverlayPermission by mutableStateOf(false)
     private var isServiceRunning by mutableStateOf(false)
-    
+    private var showSettings by mutableStateOf(false)
+
     private val overlayPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
@@ -39,22 +44,48 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             FloatNoteTheme {
+                // Open Settings when launched with OPEN_SETTINGS extra
+                LaunchedEffect(Unit) {
+                    if (intent.getBooleanExtra("OPEN_SETTINGS", false)) {
+                        showSettings = true
+                        intent.removeExtra("OPEN_SETTINGS")
+                    }
+                }
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     topBar = {
                         TopAppBar(
-                            title = { Text(stringResource(R.string.app_name)) }
+                            title = { Text(if (showSettings) stringResource(R.string.settings) else stringResource(R.string.app_name)) },
+                            navigationIcon = {
+                                if (showSettings) {
+                                    IconButton(onClick = { showSettings = false }) {
+                                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                    }
+                                }
+                            },
+                            actions = {
+                                if (!showSettings) {
+                                    IconButton(onClick = { showSettings = true }) {
+                                        Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings")
+                                    }
+                                }
+                            }
                         )
                     }
                 ) { innerPadding ->
-                    MainScreen(
-                        hasPermission = hasOverlayPermission,
-                        isServiceRunning = isServiceRunning,
-                        onRequestPermission = { requestOverlayPermission() },
-                        onStartService = { startBubbleService() },
-                        onStopService = { stopBubbleService() },
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    if (showSettings) {
+                        SettingsScreen(onNavigateBack = { showSettings = false })
+                    } else {
+                        MainScreen(
+                            hasPermission = hasOverlayPermission,
+                            isServiceRunning = isServiceRunning,
+                            onRequestPermission = { requestOverlayPermission() },
+                            onStartService = { startBubbleService() },
+                            onStopService = { stopBubbleService() },
+                            modifier = Modifier.padding(innerPadding)
+                        )
+                    }
                 }
             }
         }
@@ -63,7 +94,11 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        
+        if (intent.getBooleanExtra("OPEN_SETTINGS", false)) {
+            showSettings = true
+            intent.removeExtra("OPEN_SETTINGS")
+        }
+
         // Check if we should request audio permission
         if (intent.getBooleanExtra("REQUEST_AUDIO_PERMISSION", false)) {
             if (!hasOverlayPermission) {

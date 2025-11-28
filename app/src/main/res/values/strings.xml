@@ -24,4 +24,5 @@
     <string name="listening">Listening...</string>
     <string name="grant_mic_permission">Grant Permission</string>
     <string name="input_placeholder">Input placeholder</string>
+    <string name="settings">Settings</string>
 </resources>

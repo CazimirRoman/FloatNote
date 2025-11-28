@@ -32,7 +32,19 @@ class SettingsManager(private val context: Context) {
         }
     }
 
+    val languageFlow: Flow<String> = context.dataStore.data
+        .map { preferences ->
+            preferences[KEY_LANGUAGE_CODE] ?: "en-US"
+        }
+
+    suspend fun saveLanguage(code: String) {
+        context.dataStore.edit { preferences ->
+            preferences[KEY_LANGUAGE_CODE] = code
+        }
+    }
+
     companion object {
         private val KEY_API_KEY = stringPreferencesKey("api_key")
+        private val KEY_LANGUAGE_CODE = stringPreferencesKey("language_code")
     }
 }
