@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">FloatNote</string>
+    
+    <!-- Notification -->
+    <string name="notification_channel_name">Floating Bubble Service</string>
+    <string name="notification_channel_description">Shows when the floating bubble is active</string>
+    <string name="notification_title">FloatNote is running</string>
+    <string name="notification_text">Tap to manage overlay</string>
+    
+    <!-- MainActivity -->
+    <string name="permission_required">Overlay Permission Required</string>
+    <string name="permission_granted">Permission Granted</string>
+    <string name="grant_permission">Grant Permission</string>
+    <string name="start_bubble_service">Start Bubble Service</string>
+    <string name="stop_bubble_service">Stop Bubble Service</string>
+    
+    <!-- Overlay Panel -->
+    <string name="input_hint">Enter your text here</string>
+    <string name="generate_button">Generate</string>
+    <string name="output_placeholder">Generated text will appear here</string>
+    <string name="generated_example">Generated text example</string>
+    <string name="start_speaking">Start Speaking</string>
+    <string name="stop_speaking">Stop Speaking</string>
+    <string name="listening">Listening...</string>
+    <string name="grant_mic_permission">Grant Permission</string>
+    <string name="input_placeholder">Input placeholder</string>
+</resources>
