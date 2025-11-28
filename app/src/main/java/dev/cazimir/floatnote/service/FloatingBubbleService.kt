@@ -52,7 +52,6 @@ import android.content.ClipboardManager
 import android.widget.Toast
 import dev.cazimir.floatnote.ui.theme.FloatNoteTheme
 import kotlinx.coroutines.CoroutineScope
-import java.util.Locale
 
 class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
     
@@ -251,6 +250,10 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                             startActivity(intent)
                             removePanelOverlay()
                         },
+                        onClearClick = {
+                            inputText = ""
+                            errorMessage = ""
+                        },
                         onFormatClick = {
                             if (inputText.isBlank()) {
                                 errorMessage = "Please speak or type some text first."
@@ -390,10 +393,10 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-            // Use saved language code
-            val settingsManager = SettingsManager(this@FloatingBubbleService)
-            // We cannot block; set default and update recognizer if needed when flow emits (simple approach: read first value synchronously via runBlocking or cache)
-            // For simplicity, read once using a small coroutine
+            // Stop recording after 1.5 seconds of silence
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 2000L)
         }
         
         // Read language asynchronously then start listening
@@ -450,11 +453,8 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                 else -> "Recognition error occurred (code: $error)."
             }
             isListening = false
-            // Light retry for transient errors
-            if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_NETWORK_TIMEOUT) {
-                // Retry once after short delay
-                startListening()
-            }
+            // Retry logic removed to prevent infinite loops.
+            // If the user wants to try again, they can tap the button.
         }
         
         override fun onResults(results: Bundle?) {

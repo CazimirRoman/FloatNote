@@ -1,21 +1,35 @@
 package dev.cazimir.floatnote.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.VpnKey
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import dev.cazimir.floatnote.R
 
 @Composable
 fun OnboardingScreen(
@@ -35,147 +49,197 @@ fun OnboardingScreen(
         }
     }
 
-    Scaffold { innerPadding ->
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            when (currentStep) {
-                0 -> {
-                    // Step 1: Permissions
-                    Icon(
-                        imageVector = Icons.Default.Mic,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Text(
-                        text = "Enable Microphone",
-                        style = MaterialTheme.typography.headlineMedium,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "FloatNote needs microphone access to listen to your speech and format it using AI.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(32.dp))
-                    Button(
-                        onClick = onRequestPermission,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Grant Microphone Access")
+            Spacer(modifier = Modifier.weight(1f))
+
+            AnimatedContent(
+                targetState = currentStep,
+                transitionSpec = {
+                    if (targetState > initialState) {
+                        (slideInHorizontally { width -> width } + fadeIn()).togetherWith(
+                            slideOutHorizontally { width -> -width } + fadeOut())
+                    } else {
+                        (slideInHorizontally { width -> -width } + fadeIn()).togetherWith(
+                            slideOutHorizontally { width -> width } + fadeOut())
                     }
-                }
-                1 -> {
-                    // Step 2: API Key
-                    Icon(
-                        imageVector = Icons.Default.VpnKey,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Text(
-                        text = "Configure AI",
-                        style = MaterialTheme.typography.headlineMedium,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Enter your Google Gemini API key to enable AI correction features.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(32.dp))
-                    
-                    OutlinedTextField(
-                        value = apiKey,
-                        onValueChange = { apiKey = it },
-                        label = { Text("Gemini API Key") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        visualTransformation = if (isApiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = { isApiKeyVisible = !isApiKeyVisible }) {
-                                Text(
-                                    text = if (isApiKeyVisible) "Hide" else "Show",
-                                    style = MaterialTheme.typography.labelSmall
-                                )
+                },
+                label = "OnboardingTransition"
+            ) { step ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(32.dp)
+                ) {
+                    when (step) {
+                        0 -> OnboardingStep(
+                            icon = Icons.Default.Mic,
+                            title = "Enable Microphone",
+                            description = "FloatNote needs access to your microphone to transcribe your speech instantly.",
+                            primaryAction = {
+                                Button(
+                                    onClick = onRequestPermission,
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Text("Grant Access", style = MaterialTheme.typography.titleMedium)
+                                }
                             }
-                        }
-                    )
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    Button(
-                        onClick = {
-                            onSaveApiKey(apiKey)
-                            currentStep = 2
-                        },
-                        enabled = apiKey.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Save & Continue")
-                    }
-                }
-                2 -> {
-                    // Step 3: Completion
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Text(
-                        text = "All Set!",
-                        style = MaterialTheme.typography.headlineMedium,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "You are ready to use FloatNote. Tap the bubble to start speaking.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(32.dp))
-                    Button(
-                        onClick = onComplete,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Get Started")
+                        )
+                        1 -> OnboardingStep(
+                            icon = Icons.Default.Key,
+                            title = "Configure AI",
+                            description = "Enter your Google Gemini API key to enable powerful AI text formatting and correction.",
+                            content = {
+                                OutlinedTextField(
+                                    value = apiKey,
+                                    onValueChange = { apiKey = it },
+                                    label = { Text("Gemini API Key") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    singleLine = true,
+                                    visualTransformation = if (isApiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                    trailingIcon = {
+                                        IconButton(onClick = { isApiKeyVisible = !isApiKeyVisible }) {
+                                            Icon(
+                                                imageVector = if (isApiKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                                contentDescription = null
+                                            )
+                                        }
+                                    },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                                    )
+                                )
+                            },
+                            primaryAction = {
+                                Button(
+                                    onClick = {
+                                        onSaveApiKey(apiKey)
+                                        currentStep = 2
+                                    },
+                                    enabled = apiKey.isNotBlank(),
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Text("Continue", style = MaterialTheme.typography.titleMedium)
+                                }
+                            }
+                        )
+                        2 -> OnboardingStep(
+                            icon = Icons.Default.Check,
+                            title = "All Set!",
+                            description = "You're ready to go. Tap the floating bubble anytime to start capturing your thoughts.",
+                            primaryAction = {
+                                Button(
+                                    onClick = onComplete,
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                ) {
+                                    Text("Get Started", style = MaterialTheme.typography.titleMedium)
+                                }
+                            }
+                        )
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
+
+            Spacer(modifier = Modifier.weight(1f))
+
             // Step Indicators
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 32.dp)
             ) {
                 repeat(3) { index ->
+                    val isSelected = index == currentStep
                     Box(
                         modifier = Modifier
-                            .size(if (index == currentStep) 10.dp else 8.dp)
+                            .height(8.dp)
+                            .width(if (isSelected) 24.dp else 8.dp)
+                            .clip(CircleShape)
                             .background(
-                                color = if (index == currentStep) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                                shape = MaterialTheme.shapes.small
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
                             )
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+fun OnboardingStep(
+    icon: ImageVector,
+    title: String,
+    description: String,
+    content: (@Composable () -> Unit)? = null,
+    primaryAction: @Composable () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        // Icon Container with Glow
+        Box(
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .blur(24.dp)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), CircleShape)
+            )
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp,
+                modifier = Modifier.size(100.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
+        content?.invoke()
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        primaryAction()
     }
 }
