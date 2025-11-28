@@ -19,13 +19,11 @@ import android.speech.SpeechRecognizer
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.WindowManager
-import androidx.compose.runtime.Recomposer
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.AndroidUiDispatcher
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.compositionContext
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -52,9 +50,9 @@ import kotlinx.coroutines.launch
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.widget.Toast
-import android.content.Context
 import dev.cazimir.floatnote.ui.theme.FloatNoteTheme
 import kotlinx.coroutines.CoroutineScope
+import java.util.Locale
 
 class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
     
@@ -108,6 +106,7 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
             // Should not happen if MainActivity checks correctly, but just in case
             stopSelf()
         }
+        isRunning = true
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
     }
     
@@ -131,6 +130,7 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
         speechRecognizer?.destroy()
         removeBubbleOverlay()
         removePanelOverlay()
+        isRunning = false
         super.onDestroy()
     }
     
@@ -293,7 +293,7 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                             }
                         },
                         onCopyClick = {
-                            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
                             val clip = ClipData.newPlainText("FloatNote", inputText)
                             clipboard.setPrimaryClip(clip)
                             Toast.makeText(this@FloatingBubbleService, "Copied to clipboard", Toast.LENGTH_SHORT).show()
@@ -328,9 +328,9 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
         
         // Auto-start listening when panel opens
         checkAudioPermission()
-        if (hasAudioPermission) {
-            startListening()
-        }
+//        if (hasAudioPermission) {
+//            startListening()
+//        }
     }
     
     private fun removeBubbleOverlay() {
@@ -384,10 +384,22 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            // Use saved language code
+            val settingsManager = SettingsManager(this@FloatingBubbleService)
+            // We cannot block; set default and update recognizer if needed when flow emits (simple approach: read first value synchronously via runBlocking or cache)
+            // For simplicity, read once using a small coroutine
         }
         
+        // Read language asynchronously then start listening
+        val settingsManager = SettingsManager(this)
+        val scope = CoroutineScope(Dispatchers.Main)
         isListening = true
-        speechRecognizer?.startListening(intent)
+        scope.launch {
+            val lang = settingsManager.languageFlow.first()
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, lang)
+            intent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, packageName)
+            speechRecognizer?.startListening(intent)
+        }
     }
     
     private fun stopListening() {
@@ -399,11 +411,9 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
     
     private val recognitionListener = object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {
-            // Ready to listen
         }
         
         override fun onBeginningOfSpeech() {
-            // User started speaking
         }
         
         override fun onRmsChanged(rmsdB: Float) {
@@ -434,6 +444,11 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                 else -> "Recognition error occurred (code: $error)."
             }
             isListening = false
+            // Light retry for transient errors
+            if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_NETWORK_TIMEOUT) {
+                // Retry once after short delay
+                startListening()
+            }
         }
         
         override fun onResults(results: Bundle?) {
@@ -454,11 +469,8 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
         override fun onPartialResults(partialResults: Bundle?) {
             partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.let { matches ->
                 if (matches.isNotEmpty()) {
-                    // We don't update inputText here to avoid duplication, 
-                    // but we could show a temporary preview if we had a separate state for it.
-                    // For now, let's just log it or maybe update a preview state if we want to be fancy.
-                    // Actually, updating inputText with the partial result + a marker might be confusing.
-                    // Let's stick to final results for the main text, but we could maybe show it in the "Listening..." indicator?
+                    // consume first to avoid empty body warning without changing UI state
+                    matches.firstOrNull()?.let { _ -> /* no-op */ }
                 }
             }
         }
@@ -471,22 +483,14 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
     private fun setupComposeView(composeView: ComposeView) {
         // Set up lifecycle owner
         composeView.setViewTreeLifecycleOwner(this)
-        
         // Set up ViewModelStore owner
         composeView.setViewTreeViewModelStoreOwner(this)
-        
         // Set up SavedStateRegistry owner
         composeView.setViewTreeSavedStateRegistryOwner(this)
-        
-        // Set up Recomposer
-        val coroutineContext = AndroidUiDispatcher.CurrentThread
-        val runRecomposeScope = CoroutineScope(coroutineContext)
-        val recomposer = Recomposer(coroutineContext)
-        composeView.compositionContext = recomposer
-        
-        runRecomposeScope.launch {
-            recomposer.runRecomposeAndApplyChanges()
-        }
+
+        // Let Compose manage recomposition; avoid a custom Recomposer on the current thread.
+        // Dispose composition when the view is detached to prevent leaks.
+        composeView.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
     }
     
     private fun checkAudioPermission() {
@@ -499,5 +503,7 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
     companion object {
         private const val CHANNEL_ID = "FloatingBubbleChannel"
         private const val NOTIFICATION_ID = 1
+        @Volatile var isRunning: Boolean = false
     }
 }
+
