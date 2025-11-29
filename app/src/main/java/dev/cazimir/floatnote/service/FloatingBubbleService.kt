@@ -1,17 +1,13 @@
 package dev.cazimir.floatnote.service
 
-import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.provider.Settings
-import android.content.pm.PackageManager
-import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.os.Build
-import android.os.Bundle
 import android.os.IBinder
 import android.view.Gravity
 import android.view.MotionEvent
@@ -24,7 +20,6 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -52,10 +47,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import org.koin.android.ext.android.inject
 import org.koin.core.parameter.parametersOf
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
+import androidx.compose.runtime.LaunchedEffect
 import org.koin.android.ext.android.getKoin
+import android.content.pm.ServiceInfo
 
 
 class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
@@ -67,13 +61,6 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
     private var panelParams: WindowManager.LayoutParams? = null
     
     private val serviceScope = CoroutineScope(Dispatchers.Main)
-    
-    // Speech recognition
-    private var speechRecognizer: SpeechRecognizer? = null
-    private var isListening by mutableStateOf(false)
-    private var inputText by mutableStateOf("")
-    private var currentLanguageCode = "en-US"
-    private var retryAttempted = false
     
     // UI State
     private var isFormatting by mutableStateOf(false)
@@ -87,6 +74,10 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
     // Injected via Koin
     private val settingsManager: SettingsManager by inject()
     private val historyManager: dev.cazimir.floatnote.data.HistoryManager by inject()
+    private val speechManager: SpeechRecognitionManager by inject()
+
+    private var currentLanguageCode: String = "en-US"
+    private var isListening: Boolean by mutableStateOf(false)
 
     override val lifecycle: Lifecycle
         get() = lifecycleRegistry
@@ -121,6 +112,12 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
         }
         isRunning = true
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
+
+        // Initialize manager with current language
+        serviceScope.launch {
+            val lang = settingsManager.languageFlow.first()
+            speechManager.initialize(lang)
+        }
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -138,8 +135,7 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
     
     override fun onDestroy() {
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
-        stopListening()
-        speechRecognizer?.destroy()
+        stopListeningInternal()
         serviceScope.cancel()
         removeBubbleOverlay()
         removePanelOverlay()
@@ -218,6 +214,13 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
         windowManager.addView(bubbleView, bubbleParams)
     }
     
+    private fun setupComposeView(composeView: ComposeView) {
+        composeView.setViewTreeLifecycleOwner(this)
+        composeView.setViewTreeViewModelStoreOwner(this)
+        composeView.setViewTreeSavedStateRegistryOwner(this)
+        composeView.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+    }
+
     private fun startListening() {
         errorMessage = ""
         checkAudioPermission()
@@ -225,23 +228,14 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
             errorMessage = "Microphone permission not granted."
             return
         }
-        
-        if (speechRecognizer == null) {
-            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
-            speechRecognizer?.setRecognitionListener(recognitionListener)
-        }
-        
-        val scope = CoroutineScope(Dispatchers.Main)
-        isListening = true
-        retryAttempted = false
-        scope.launch {
+        serviceScope.launch {
             val lang = settingsManager.languageFlow.first()
-            currentLanguageCode = lang
-            val intent = buildRecognizerIntent(lang).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, lang)
-                putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, packageName)
+            if (lang != currentLanguageCode) {
+                currentLanguageCode = lang
+                speechManager.initialize(lang)
             }
-            speechRecognizer?.startListening(intent)
+            speechManager.startListening()
+            isListening = true
         }
     }
 
@@ -274,17 +268,19 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                 FloatNoteTheme {
                     // Reactive language collection via SettingsManager from Koin
                     val reactiveLanguage by settingsManager.languageFlow.collectAsState(initial = currentLanguageCode)
-                    androidx.compose.runtime.LaunchedEffect(reactiveLanguage) { currentLanguageCode = reactiveLanguage }
+                    LaunchedEffect(reactiveLanguage) { currentLanguageCode = reactiveLanguage; speechManager.initialize(reactiveLanguage) }
+                    val speechState by speechManager.state.collectAsState()
+                    val recognizedText by speechManager.recognizedText.collectAsState()
 
                     OverlayPanel(
                         hasAudioPermission = hasAudioPermission,
-                        inputText = inputText,
-                        onInputTextChange = { inputText = it },
-                        isListening = isListening,
+                        inputText = recognizedText,
+                        onInputTextChange = { speechManager.updateText(it) },
+                        isListening = speechState is SpeechState.Listening || speechState is SpeechState.Initializing,
                         isFormatting = isFormatting,
                         errorMessage = errorMessage,
                         onStartListening = { startListening() },
-                        onStopListening = { stopListening() },
+                        onStopListening = { stopListeningInternal() },
                         onRequestPermission = { openMainActivityForPermission() },
                         onDismiss = { removePanelOverlay() },
                         onOpenSettings = {
@@ -296,7 +292,8 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                             removePanelOverlay()
                         },
                         onFormatClick = {
-                            if (inputText.isBlank()) {
+                            val current = recognizedText
+                            if (current.isBlank()) {
                                 errorMessage = "Please speak or type some text first."
                                 return@OverlayPanel
                             }
@@ -304,7 +301,7 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                             runScope.launch {
                                 val apiKey = settingsManager.apiKeyFlow.first()
                                 if (apiKey.isBlank()) {
-                                    errorMessage = "Gemini API Key missing. Please configure it in Settings."
+                                    errorMessage = "Gemini API Key missing. Configure in Settings."
                                     val intent = Intent(this@FloatingBubbleService, MainActivity::class.java).apply {
                                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                         putExtra("OPEN_SETTINGS", true)
@@ -315,36 +312,31 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                                 isFormatting = true
                                 try {
                                     val repository = getKoin().get<dev.cazimir.floatnote.data.GeminiRepository> { parametersOf(apiKey) }
-                                    val result = repository.formatText(inputText)
+                                    val result = repository.formatText(current)
                                     result.onSuccess { formattedText ->
-                                        inputText = formattedText
+                                        speechManager.updateText(formattedText)
                                         errorMessage = ""
                                         launch(Dispatchers.IO) { historyManager.addEntry(formattedText) }
-                                    }.onFailure { e ->
-                                        errorMessage = "Error: ${e.localizedMessage}"
-                                    }
+                                    }.onFailure { e -> errorMessage = "Error: ${e.localizedMessage}" }
                                 } catch (e: Exception) {
-                                    errorMessage = "Error: ${e.localizedMessage}"
-                                } finally {
-                                    isFormatting = false
-                                }
+                                    errorMessage = "Error: ${e.localizedMessage}" }
+                                finally { isFormatting = false }
                             }
                         },
                         onCopyClick = {
                             val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = ClipData.newPlainText("FloatNote", inputText)
+                            val clip = ClipData.newPlainText("FloatNote", recognizedText)
                             clipboard.setPrimaryClip(clip)
                             Toast.makeText(this@FloatingBubbleService, "Copied to clipboard", Toast.LENGTH_SHORT).show()
                         },
                         onShareClick = {
                             val sendIntent: Intent = Intent().apply {
                                 action = Intent.ACTION_SEND
-                                putExtra(Intent.EXTRA_TEXT, inputText)
+                                putExtra(Intent.EXTRA_TEXT, recognizedText)
                                 type = "text/plain"
                                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             }
-                            val shareIntent = Intent.createChooser(sendIntent, null)
-                            shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            val shareIntent = Intent.createChooser(sendIntent, null).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
                             startActivity(shareIntent)
                         }
                     )
@@ -374,11 +366,8 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
     }
     
     private fun removePanelOverlay() {
-        stopListening()
-        panelView?.let {
-            windowManager.removeView(it)
-            panelView = null
-        }
+        stopListeningInternal()
+        panelView?.let { windowManager.removeView(it); panelView = null }
     }
     
     private fun openMainActivityForPermission() {
@@ -389,89 +378,13 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
         startActivity(intent)
     }
     
-    private fun stopListening() {
-        if (isListening) {
-            isListening = false
-            speechRecognizer?.stopListening()
-        }
+    private fun stopListeningInternal() {
+        speechManager.stopListening()
+        isListening = false
     }
-    
-    private fun buildRecognizerIntent(lang: String): Intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-        putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-        putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
-        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
-    }
-    
-    private val recognitionListener = object : RecognitionListener {
-        override fun onReadyForSpeech(params: Bundle?) {}
-        
-        override fun onBeginningOfSpeech() {}
-        
-        override fun onRmsChanged(rmsdB: Float) {}
 
-        override fun onBufferReceived(buffer: ByteArray?) {}
-        
-        override fun onEndOfSpeech() {
-            isListening = false
-        }
-
-        override fun onError(error: Int) {
-            val errorText = when (error) {
-                SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
-                SpeechRecognizer.ERROR_CLIENT -> "Client side error"
-                SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Insufficient permissions"
-                SpeechRecognizer.ERROR_NETWORK -> "Network error"
-                SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
-                SpeechRecognizer.ERROR_NO_MATCH -> "No match"
-                SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognition service busy"
-                SpeechRecognizer.ERROR_SERVER -> "Server error"
-                SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech input"
-                else -> "Error $error"
-            }
-            
-            // Soft errors - just reset
-            if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
-                isListening = false
-                return
-            }
-            
-            errorMessage = errorText
-            isListening = false
-        }
-
-        override fun onResults(results: Bundle?) {
-            results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.let { matches ->
-                if (matches.isNotEmpty()) {
-                    val recognizedText = matches[0]
-                    inputText = if (inputText.isEmpty() || inputText.endsWith(" ")) {
-                        "$inputText$recognizedText"
-                    } else {
-                        "$inputText $recognizedText"
-                    }
-                }
-            }
-            isListening = false
-        }
-        
-        override fun onPartialResults(partialResults: Bundle?) {}
-
-        override fun onEvent(eventType: Int, params: Bundle?) {}
-    }
-    
-    private fun setupComposeView(composeView: ComposeView) {
-        composeView.setViewTreeLifecycleOwner(this)
-        composeView.setViewTreeViewModelStoreOwner(this)
-        composeView.setViewTreeSavedStateRegistryOwner(this)
-        composeView.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
-    }
-    
     private fun checkAudioPermission() {
-        hasAudioPermission = ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.RECORD_AUDIO
-        ) == PackageManager.PERMISSION_GRANTED
+        hasAudioPermission = checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
     companion object {
