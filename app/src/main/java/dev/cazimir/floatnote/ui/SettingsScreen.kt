@@ -9,8 +9,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -40,9 +39,6 @@ fun SettingsScreen(
     val savedLanguage by settingsManager.languageFlow.collectAsState(initial = "en-US")
 
     var apiKey by remember(savedApiKey) { mutableStateOf(savedApiKey) }
-    var isApiKeyVisible by remember { mutableStateOf(false) }
-    var showSavedMessage by remember { mutableStateOf(false) }
-
     // Update local state when flow emits new value if not already modified
     LaunchedEffect(savedApiKey) {
         if (apiKey.isEmpty()) {
@@ -50,26 +46,31 @@ fun SettingsScreen(
         }
     }
 
+    var isApiKeyVisible by remember { mutableStateOf(false) }
+    var showSavedMessage by remember { mutableStateOf(false) }
+
     // Language options (code, label, emoji flag)
     val languages = listOf(
-        Triple("en-US", "English (US)", "🇺🇸"),
-        Triple("en-GB", "English (UK)", "🇬🇧"),
-        Triple("es-ES", "Spanish", "🇪🇸"),
-        Triple("fr-FR", "French", "🇫🇷"),
-        Triple("de-DE", "German", "🇩🇪"),
-        Triple("it-IT", "Italian", "🇮🇹"),
-        Triple("pt-BR", "Portuguese (BR)", "🇧🇷"),
-        Triple("hi-IN", "Hindi", "🇮🇳")
+        "en-US" to "English (US)" to "🇺🇸",
+        "en-GB" to "English (UK)" to "🇬🇧",
+        "es-ES" to "Spanish" to "🇪🇸",
+        "fr-FR" to "French" to "🇫🇷",
+        "de-DE" to "German" to "🇩🇪",
+        "it-IT" to "Italian" to "🇮🇹",
+        "pt-BR" to "Portuguese (BR)" to "🇧🇷",
+        "hi-IN" to "Hindi" to "🇮🇳",
+        "ro-RO" to "Romanian" to "🇷🇴"
     )
 
     Scaffold(
         topBar = {
-            LargeTopAppBar(
-                title = { 
+            TopAppBar(
+                title = {
                     Text(
                         "Settings",
-                        style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold)
-                    ) 
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -79,9 +80,9 @@ fun SettingsScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.largeTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface
+                    scrolledContainerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
@@ -92,47 +93,47 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+            contentPadding = PaddingValues(bottom = 32.dp)
         ) {
             item {
-                SettingsGroup(title = "AI Configuration") {
-                    // API Key Input
+                SettingsSectionHeader("AI Configuration", Icons.Default.SmartToy)
+                
+                Card(
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                            .padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Key,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = "Gemini API Key",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                        
                         Text(
-                            text = "Required for AI text formatting and correction.",
+                            text = "Gemini API Key",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Text(
+                            text = "Enter your Google Gemini API key to enable AI correction features.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
                         OutlinedTextField(
                             value = apiKey,
-                            onValueChange = { 
-                                apiKey = it 
+                            onValueChange = {
+                                apiKey = it
                                 showSavedMessage = false
                             },
+                            label = { Text("API Key") },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
                             singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
                             visualTransformation = if (isApiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             trailingIcon = {
                                 IconButton(onClick = { isApiKeyVisible = !isApiKeyVisible }) {
@@ -141,11 +142,7 @@ fun SettingsScreen(
                                         contentDescription = if (isApiKeyVisible) "Hide" else "Show"
                                     )
                                 }
-                            },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                            )
+                            }
                         )
 
                         Row(
@@ -158,11 +155,11 @@ fun SettingsScreen(
                                     imageVector = Icons.Default.Check,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "Saved",
+                                    text = "Saved!",
                                     color = MaterialTheme.colorScheme.primary,
                                     style = MaterialTheme.typography.labelLarge
                                 )
@@ -186,92 +183,109 @@ fun SettingsScreen(
             }
 
             item {
-                SettingsGroup(title = "Speech Recognition") {
+                SettingsSectionHeader("Language", Icons.Default.Language)
+
+                Card(
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(MaterialTheme.colorScheme.surface)
+                            .padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        languages.forEachIndexed { index, (code, label, flag) ->
-                            SettingsListItem(
-                                icon = flag,
-                                title = label,
-                                isSelected = savedLanguage == code,
-                                showDivider = index < languages.size - 1,
-                                onClick = {
-                                    scope.launch { settingsManager.saveLanguage(code) }
+                        Text(
+                            text = "Speech Recognition Language",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        
+                        Text(
+                            text = "Choose the primary language for speech-to-text conversion.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            languages.forEach { item ->
+                                val (codeLabel, flag) = item.first to item.second
+                                val (code, label) = codeLabel
+                                val isSelected = savedLanguage == code
+                                
+                                Surface(
+                                    onClick = {
+                                        scope.launch { settingsManager.saveLanguage(code) }
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (isSelected) 
+                                        MaterialTheme.colorScheme.primaryContainer 
+                                    else 
+                                        MaterialTheme.colorScheme.surface,
+                                    tonalElevation = if (isSelected) 2.dp else 0.dp,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = flag,
+                                                style = MaterialTheme.typography.titleLarge
+                                            )
+                                            Spacer(modifier = Modifier.width(16.dp))
+                                            Text(
+                                                text = label,
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                            )
+                                        }
+                                        
+                                        if (isSelected) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = "Selected",
+                                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                            )
+                                        }
+                                    }
                                 }
-                            )
+                            }
                         }
                     }
                 }
             }
-            
-            item {
-                Spacer(modifier = Modifier.height(32.dp))
-            }
         }
     }
 }
 
 @Composable
-fun SettingsGroup(
-    title: String,
-    content: @Composable () -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+fun SettingsSectionHeader(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = title,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 16.dp, bottom = 4.dp)
+            fontWeight = FontWeight.Bold
         )
-        content()
-    }
-}
-
-@Composable
-fun SettingsListItem(
-    icon: String, // Emoji flag
-    title: String,
-    isSelected: Boolean,
-    showDivider: Boolean,
-    onClick: () -> Unit
-) {
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = icon,
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            }
-            if (isSelected) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = "Selected",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-        if (showDivider) {
-            HorizontalDivider(
-                modifier = Modifier.padding(start = 56.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-            )
-        }
     }
 }

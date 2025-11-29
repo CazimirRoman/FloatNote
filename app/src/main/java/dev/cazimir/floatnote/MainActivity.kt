@@ -20,10 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.cazimir.floatnote.service.FloatingBubbleService
-import dev.cazimir.floatnote.ui.MainViewModel
 import dev.cazimir.floatnote.ui.SettingsScreen
 import dev.cazimir.floatnote.ui.theme.FloatNoteTheme
-import org.koin.androidx.compose.koinViewModel
 
 class MainActivity : ComponentActivity() {
     
@@ -41,12 +39,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        
+
         checkOverlayPermission()
 
         setContent {
-            val mainViewModel: MainViewModel = koinViewModel()
-
             FloatNoteTheme {
                 // Open Settings when launched with OPEN_SETTINGS extra
                 LaunchedEffect(Unit) {
@@ -55,10 +51,6 @@ class MainActivity : ComponentActivity() {
                         intent.removeExtra("OPEN_SETTINGS")
                     }
                 }
-
-                // reflect onResume values into VM
-                LaunchedEffect(hasOverlayPermission) { mainViewModel.setOverlayPermission(hasOverlayPermission) }
-                LaunchedEffect(isServiceRunning) { mainViewModel.setServiceRunning(isServiceRunning) }
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -98,7 +90,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -113,11 +105,11 @@ class MainActivity : ComponentActivity() {
                 requestOverlayPermission()
             }
         }
-        
+
         // Check if we should open settings (handled in Compose, but we need to ensure intent is updated)
         // The setIntent(intent) call above handles updating the intent for the Activity
     }
-    
+
     override fun onResume() {
         super.onResume()
         checkOverlayPermission()
@@ -181,16 +173,16 @@ fun MainScreen(
             text = "🔵",
             style = MaterialTheme.typography.displayMedium
         )
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         Text(
             text = stringResource(R.string.app_name),
             style = MaterialTheme.typography.headlineMedium
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
@@ -215,9 +207,9 @@ fun MainScreen(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         if (!hasPermission) {
             Button(
                 onClick = onRequestPermission,
@@ -245,10 +237,10 @@ fun MainScreen(
                 }
             }
         }
-        
+
         if (hasPermission && isServiceRunning) {
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Text(
                 text = "The floating bubble is now active. You can minimize this app and the bubble will remain visible.",
                 style = MaterialTheme.typography.bodyMedium,

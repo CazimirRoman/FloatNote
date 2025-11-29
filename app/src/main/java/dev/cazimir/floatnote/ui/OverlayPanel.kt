@@ -5,13 +5,13 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Mic
@@ -23,14 +23,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.cazimir.floatnote.R
 
 @Composable
@@ -49,278 +49,254 @@ fun OverlayPanel(
     onRequestPermission: () -> Unit,
     onDismiss: () -> Unit,
     onOpenSettings: () -> Unit = {},
-    onClearClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
     val screenHeightDp = configuration.screenHeightDp
-    val maxPanelHeight = (screenHeightDp * 0.7f).dp
-    val haptics = LocalHapticFeedback.current
+    val maxPanelHeight = (screenHeightDp * 0.75f).dp
 
-    // Premium Glassmorphism Container
-    Surface(
+    // Glassmorphism Card
+    Card(
         modifier = modifier
-            .widthIn(min = 340.dp, max = 440.dp)
-            .heightIn(min = 260.dp, max = maxPanelHeight)
-            .clip(RoundedCornerShape(28.dp)),
-        color = Color.Transparent, // Handle background manually for glass effect
-        tonalElevation = 0.dp,
-        shadowElevation = 12.dp
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Glass Background Layer
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .blur(30.dp)
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
-                )
-            }
+            .widthIn(min = 340.dp, max = 480.dp)
+            .heightIn(min = 300.dp, max = maxPanelHeight),
 
-            // Content Layer
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+        shape = RoundedCornerShape(32.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // Shadow handled by border/background
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            // Header Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Header
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // App Icon Placeholder (could be an actual icon)
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "F",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = "FloatNote",
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        IconButton(
-                            onClick = onOpenSettings,
-                            colors = IconButtonDefaults.filledTonalIconButtonColors()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Settings",
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        IconButton(
-                            onClick = onDismiss,
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close",
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
                 }
 
-                if (!hasAudioPermission) {
-                    PermissionRequestContent(onRequestPermission)
-                } else {
-                    // Main Content
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                Row {
+                    IconButton(
+                        onClick = onOpenSettings,
+                        colors = IconButtonDefaults.iconButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     ) {
-                        // Elegant Input Field
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 140.dp, max = 300.dp)
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                                .padding(16.dp)
-                        ) {
-                            if (inputText.isEmpty()) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
+                    IconButton(
+                        onClick = onDismiss,
+                        colors = IconButtonDefaults.iconButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
+                }
+            }
+
+            if (!hasAudioPermission) {
+                PermissionRequestContent(onRequestPermission)
+            } else {
+                // Main Content
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Text Input Area - "Ghost" Style
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 140.dp, max = 320.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
+                            .padding(4.dp)
+                    ) {
+                        TextField(
+                            value = inputText,
+                            onValueChange = onInputTextChange,
+                            modifier = Modifier.fillMaxSize(),
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                lineHeight = 24.sp
+                            ),
+                            placeholder = {
                                 Text(
-                                    text = "Tap microphone to speak...",
+                                    "Tap mic to speak...",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                 )
-                            }
-                            
-                            TextField(
-                                value = inputText,
-                                onValueChange = onInputTextChange,
-                                modifier = Modifier.fillMaxSize(),
-                                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                    lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.2
-                                ),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent,
-                                    disabledContainerColor = Color.Transparent,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
-                                ),
-                                placeholder = null // Handled manually above for better styling
-                            )
+                            },
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                disabledContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                            ),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                    }
 
-                            if (inputText.isNotEmpty()) {
-                                IconButton(
-                                    onClick = {
-                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        onClearClick()
-                                    },
-                                    modifier = Modifier.align(Alignment.TopEnd)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Clear,
-                                        contentDescription = "Clear",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    // Action Buttons
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Primary Action: Mic / Stop
+                        FilledTonalButton(
+                            onClick = {
+                                if (isListening) onStopListening() else onStartListening()
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = if (isListening)
+                                    MaterialTheme.colorScheme.errorContainer
+                                else
+                                    MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = if (isListening)
+                                    MaterialTheme.colorScheme.onErrorContainer
+                                else
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        ) {
+                            AnimatedVisibility(visible = isListening) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
                                     )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text("Listening...", style = MaterialTheme.typography.titleMedium)
+                                }
+                            }
+                            AnimatedVisibility(visible = !isListening) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Mic, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text("Start Recording", style = MaterialTheme.typography.titleMedium)
                                 }
                             }
                         }
 
-                        // Action Buttons
+                        // Secondary Actions: Format, Copy, Share
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            // Mic Button (Primary Action)
+                            // Format Button (Weight 1)
                             Button(
-                                onClick = {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    if (isListening) onStopListening() else onStartListening()
-                                },
+                                onClick = onFormatClick,
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(56.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (isListening) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                                ),
-                                elevation = ButtonDefaults.buttonElevation(
-                                    defaultElevation = 4.dp,
-                                    pressedElevation = 2.dp
-                                )
-                            ) {
-                                AnimatedVisibility(visible = isListening) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier
-                                            .size(20.dp)
-                                            .padding(end = 8.dp),
-                                        color = MaterialTheme.colorScheme.onError,
-                                        strokeWidth = 2.dp
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.Default.Mic,
-                                    contentDescription = null
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = if (isListening) stringResource(R.string.stop_speaking) else stringResource(R.string.start_speaking),
-                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
-                                )
-                            }
-
-                            // Format Button
-                            FilledTonalButton(
-                                onClick = {
-                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    onFormatClick()
-                                },
+                                    .height(50.dp),
+                                shape = RoundedCornerShape(14.dp),
                                 enabled = inputText.isNotBlank() && !isListening && !isFormatting,
-                                modifier = Modifier.height(56.dp),
-                                shape = RoundedCornerShape(16.dp)
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
                             ) {
                                 if (isFormatting) {
                                     CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        strokeWidth = 2.dp
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
                                 } else {
-                                    Icon(Icons.Default.AutoAwesome, null)
+                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Format")
                                 }
                             }
-                        }
 
-                        // Secondary Actions Row
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    haptics.performHapticFeedback(HapticFeedbackType.KeyboardTap)
-                                    onCopyClick()
-                                },
+                            // Copy
+                            FilledTonalIconButton(
+                                onClick = onCopyClick,
                                 enabled = inputText.isNotBlank(),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(48.dp),
+                                modifier = Modifier.size(50.dp),
                                 shape = RoundedCornerShape(14.dp)
                             ) {
-                                Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Copy")
+                                Icon(Icons.Default.ContentCopy, contentDescription = "Copy")
                             }
 
-                            OutlinedButton(
-                                onClick = {
-                                    haptics.performHapticFeedback(HapticFeedbackType.KeyboardTap)
-                                    onShareClick()
-                                },
+                            // Share
+                            FilledTonalIconButton(
+                                onClick = onShareClick,
                                 enabled = inputText.isNotBlank(),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(48.dp),
+                                modifier = Modifier.size(50.dp),
                                 shape = RoundedCornerShape(14.dp)
                             ) {
-                                Icon(Icons.Default.Share, null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Share")
+                                Icon(Icons.Default.Share, contentDescription = "Share")
                             }
                         }
                     }
-                }
 
-                // Error Message
-                AnimatedVisibility(
-                    visible = errorMessage.isNotEmpty(),
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    // Error Message
+                    AnimatedVisibility(
+                        visible = errorMessage.isNotEmpty(),
+                        enter = fadeIn(),
+                        exit = fadeOut()
                     ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f)
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(
-                                text = errorMessage,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.weight(1f)
-                            )
-                            if (errorMessage.contains("permission", ignoreCase = true)) {
-                                TextButton(onClick = onRequestPermission) {
-                                    Text("Grant", color = MaterialTheme.colorScheme.onErrorContainer)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = errorMessage,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                if (errorMessage.contains("permission", ignoreCase = true)) {
+                                    TextButton(onClick = onRequestPermission) {
+                                        Text("Grant", color = MaterialTheme.colorScheme.onErrorContainer)
+                                    }
                                 }
                             }
                         }
@@ -332,11 +308,9 @@ fun OverlayPanel(
 }
 
 @Composable
-private fun PermissionRequestContent(onRequestPermission: () -> Unit) {
+fun PermissionRequestContent(onRequestPermission: () -> Unit) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 20.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -345,51 +319,80 @@ private fun PermissionRequestContent(onRequestPermission: () -> Unit) {
             contentDescription = null,
             modifier = Modifier
                 .size(64.dp)
-                .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(20.dp))
+                .background(
+                    MaterialTheme.colorScheme.errorContainer,
+                    shape = RoundedCornerShape(20.dp)
+                )
                 .padding(16.dp),
-            tint = MaterialTheme.colorScheme.error
+            tint = MaterialTheme.colorScheme.onErrorContainer
         )
         Text(
-            text = "Microphone Access Required",
+            text = "Microphone Access Needed",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = "FloatNote needs access to your microphone to transcribe your speech.",
+            text = "FloatNote needs access to your microphone to transcribe your speech into text.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
         Button(
             onClick = onRequestPermission,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
         ) {
             Text("Grant Permission")
         }
     }
 }
 
-@Preview(name = "Default", showBackground = true)
+@Preview(name = "Default", showBackground = false)
 @Composable
 private fun OverlayPanelPreview_Default() {
     MaterialTheme {
-        OverlayPanel(
-            hasAudioPermission = true,
-            inputText = "Quick note about meeting",
-            onInputTextChange = {},
-            isListening = false,
-            isFormatting = false,
-            errorMessage = "",
-            onStartListening = {},
-            onStopListening = {},
-            onFormatClick = {},
-            onCopyClick = {},
-            onShareClick = {},
-            onRequestPermission = {},
-            onDismiss = {},
-            modifier = Modifier
-        )
+        Box(modifier = Modifier.padding(16.dp)) {
+            OverlayPanel(
+                hasAudioPermission = true,
+                inputText = "This is a sample note that I am dictating right now.",
+                onInputTextChange = {},
+                isListening = false,
+                isFormatting = false,
+                errorMessage = "",
+                onStartListening = {},
+                onStopListening = {},
+                onFormatClick = {},
+                onCopyClick = {},
+                onShareClick = {},
+                onRequestPermission = {},
+                onDismiss = {},
+                modifier = Modifier
+            )
+        }
+    }
+}
+
+@Preview(name = "Listening", showBackground = false)
+@Composable
+private fun OverlayPanelPreview_Listening() {
+    MaterialTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            OverlayPanel(
+                hasAudioPermission = true,
+                inputText = "",
+                onInputTextChange = {},
+                isListening = true,
+                isFormatting = false,
+                errorMessage = "",
+                onStartListening = {},
+                onStopListening = {},
+                onFormatClick = {},
+                onCopyClick = {},
+                onShareClick = {},
+                onRequestPermission = {},
+                onDismiss = {},
+                modifier = Modifier
+            )
+        }
     }
 }

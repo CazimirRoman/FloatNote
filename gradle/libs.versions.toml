@@ -31,6 +31,7 @@ androidx-datastore-preferences = { group = "androidx.datastore", name = "datasto
 google-ai-client = { group = "com.google.ai.client.generativeai", name = "generativeai", version.ref = "googleAiClient" }
 koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
 koin-androidx-compose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
+androidx_navigation_compose = { module = "androidx.navigation:navigation-compose", version = "2.7.7" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
