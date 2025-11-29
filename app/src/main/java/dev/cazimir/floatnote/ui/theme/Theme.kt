@@ -13,29 +13,31 @@ import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
     primary = BrandPurpleLight,
-    secondary = BrandOrange,
-    tertiary = Pink80,
+    secondary = BrandPurpleLight, // Changed from orange to purple for better contrast
+    tertiary = BrandOrange, // Orange as tertiary/accent
     primaryContainer = BrandPurpleDark,
     onPrimaryContainer = BrandPurpleLight,
-    secondaryContainer = BrandOrange.copy(alpha = 0.2f),
-    onSecondaryContainer = BrandOrangeLight
+    secondaryContainer = BrandPurple.copy(alpha = 0.2f),
+    onSecondaryContainer = BrandPurpleLight,
+    error = BrandOrange // Use orange for errors/warnings as accent
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = BrandPurple,
-    secondary = BrandOrange,
-    tertiary = Pink40,
+    secondary = BrandPurple, // Changed from orange to purple for better contrast
+    tertiary = BrandOrange, // Orange as tertiary/accent
     primaryContainer = BrandPurpleLight,
     onPrimaryContainer = BrandPurpleDark,
-    secondaryContainer = BrandOrangeLight.copy(alpha = 0.2f),
-    onSecondaryContainer = BrandOrange
+    secondaryContainer = BrandPurpleLight.copy(alpha = 0.3f),
+    onSecondaryContainer = BrandPurpleDark,
+    error = BrandOrange // Use orange for errors/warnings as accent
 )
 
 @Composable
 fun FloatNoteTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false, // Changed to false to use our custom theme
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

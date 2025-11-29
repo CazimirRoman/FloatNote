@@ -223,24 +223,26 @@ fun OverlayPanel(
                             // Format Button (Weight 1)
                             Button(
                                 onClick = onFormatClick,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(50.dp),
-                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.weight(1f),
                                 enabled = inputText.isNotBlank() && !isListening && !isFormatting,
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
                                 )
                             ) {
                                 if (isFormatting) {
                                     CircularProgressIndicator(
                                         modifier = Modifier.size(16.dp),
                                         strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        color = MaterialTheme.colorScheme.onPrimary
                                     )
                                 } else {
-                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.tertiary, // Orange accent
+                                        modifier = Modifier.size(18.dp)
+                                    )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("Format")
                                 }
