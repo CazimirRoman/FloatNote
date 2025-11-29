@@ -1,7 +1,9 @@
 package dev.cazimir.floatnote
 
 import android.app.Application
+import dev.cazimir.floatnote.data.GeminiRepository
 import dev.cazimir.floatnote.data.HistoryManager
+import dev.cazimir.floatnote.data.SettingsManager
 import dev.cazimir.floatnote.service.SpeechRecognitionManager
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
@@ -12,10 +14,10 @@ class FloatNoteApp : Application() {
         super.onCreate()
 
         val appModule = module {
-            single { dev.cazimir.floatnote.data.SettingsManager(androidContext()) }
+            single { SettingsManager(androidContext()) }
             single { HistoryManager(androidContext()) }
             single { SpeechRecognitionManager(androidContext()) }
-            factory { (apiKey: String) -> dev.cazimir.floatnote.data.GeminiRepository(apiKey) }
+            factory { (apiKey: String) -> GeminiRepository(apiKey) }
         }
 
         startKoin {

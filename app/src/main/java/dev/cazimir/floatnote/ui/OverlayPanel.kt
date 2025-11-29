@@ -63,7 +63,7 @@ fun OverlayPanel(
 
         shape = RoundedCornerShape(32.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.90f)
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // Shadow handled by border/background
         border = androidx.compose.foundation.BorderStroke(
