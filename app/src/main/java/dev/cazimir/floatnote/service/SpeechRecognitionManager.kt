@@ -20,7 +20,8 @@ sealed class SpeechState {
     data class Error(val code: Int, val message: String) : SpeechState()
 }
 
-class SpeechRecognitionManager(private val context: Context) {
+class SpeechRecognitionManager(
+    private val context: Context) {
 
     private val _state = MutableStateFlow<SpeechState>(SpeechState.Idle)
     val state = _state.asStateFlow()

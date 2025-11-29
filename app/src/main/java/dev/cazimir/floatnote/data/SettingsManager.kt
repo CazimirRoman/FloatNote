@@ -11,9 +11,10 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
-class SettingsManager(private val context: Context) {
-
-    private val cryptoManager = CryptoManager()
+class SettingsManager(
+    private val context: Context,
+    private val cryptoManager: CryptoManager
+    ) {
 
     val apiKeyFlow: Flow<String> = context.dataStore.data
         .map { preferences ->

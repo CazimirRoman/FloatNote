@@ -79,7 +79,6 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
 
     // Injected via Koin
     private val settingsManager: SettingsManager by inject()
-    private val historyManager: dev.cazimir.floatnote.data.HistoryManager by inject()
     private val speechManager: SpeechRecognitionManager by inject()
 
     private var currentLanguageCode: String = "en-US"

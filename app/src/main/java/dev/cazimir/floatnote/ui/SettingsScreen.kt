@@ -1,7 +1,5 @@
 package dev.cazimir.floatnote.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,26 +15,25 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import dev.cazimir.floatnote.data.SettingsManager
+import dev.cazimir.floatnote.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
+import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit
 ) {
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val settingsManager = remember { SettingsManager(context) }
-    val savedApiKey by settingsManager.apiKeyFlow.collectAsState(initial = "")
-    val savedLanguage by settingsManager.languageFlow.collectAsState(initial = "en-US")
+    val viewModel: SettingsViewModel = koinViewModel()
+    val savedApiKey by viewModel.apiKeyFlow.collectAsState(initial = "")
+    val savedLanguage by viewModel.languageFlow.collectAsState(initial = "en-US")
 
     var apiKey by remember(savedApiKey) { mutableStateOf(savedApiKey) }
     LaunchedEffect(savedApiKey) {
@@ -175,10 +172,8 @@ fun SettingsScreen(
                             
                             Button(
                                 onClick = {
-                                    scope.launch {
-                                        settingsManager.saveApiKey(apiKey)
-                                        showSavedMessage = true
-                                    }
+                                    viewModel.saveApiKey(apiKey)
+                                    showSavedMessage = true
                                 },
                                 shape = buttonShape
                             ) {
@@ -234,7 +229,7 @@ fun SettingsScreen(
                     label = label,
                     isSelected = isSelected,
                     shape = languageItemShape,
-                    onClick = { scope.launch { settingsManager.saveLanguage(code) } }
+                    onClick = { viewModel.saveLanguage(code) }
                 )
             }
         }

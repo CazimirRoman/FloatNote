@@ -18,7 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
@@ -37,6 +37,8 @@ import dev.cazimir.floatnote.service.FloatingBubbleService
 import dev.cazimir.floatnote.ui.SettingsScreen
 import dev.cazimir.floatnote.ui.theme.FloatNoteTheme
 import kotlinx.coroutines.launch
+import org.koin.androidx.compose.koinViewModel
+import dev.cazimir.floatnote.ui.viewmodel.SettingsViewModel
 
 class MainActivity : ComponentActivity() {
     
@@ -66,12 +68,11 @@ class MainActivity : ComponentActivity() {
 
         checkOverlayPermission()
         
-        val settingsManager = dev.cazimir.floatnote.data.SettingsManager(this)
-
         setContent {
             FloatNoteTheme {
-                val isOnboardingCompleted by settingsManager.isOnboardingCompletedFlow.collectAsState(initial = true)
-                val recentNotes by settingsManager.recentNotesFlow.collectAsState(initial = emptyList())
+                val settingsViewModel: SettingsViewModel = koinViewModel()
+                val isOnboardingCompleted by settingsViewModel.onboardingCompletedFlow.collectAsState(initial = true)
+                val recentNotes by settingsViewModel.recentNotesFlow.collectAsState(initial = emptyList())
                 val isServiceRunningState by FloatingBubbleService.serviceState.collectAsState()
                 
                 // Update local state when flow changes
@@ -98,15 +99,9 @@ class MainActivity : ComponentActivity() {
                     dev.cazimir.floatnote.ui.OnboardingScreen(
                         hasOverlayPermission = hasOverlayPermission,
                         onRequestOverlayPermission = { requestOverlayPermission() },
-                        onSaveApiKey = { key -> 
-                            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                                settingsManager.saveApiKey(key)
-                            }
-                        },
+                        onSaveApiKey = { key -> settingsViewModel.saveApiKey(key) },
                         onComplete = {
-                            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                                settingsManager.setOnboardingCompleted(true)
-                            }
+                            settingsViewModel.setOnboardingCompleted(true)
                             showOnboarding = false
                             // Auto-start the service after onboarding
                             startBubbleService()
@@ -368,7 +363,7 @@ fun MainScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
-                        imageVector = Icons.Default.Notes,
+                        imageVector = Icons.Default.Description,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.size(48.dp)
