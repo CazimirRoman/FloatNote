@@ -447,6 +447,9 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                             startActivity(shareIntent)
                             removePanelOverlay()
                         },
+                        onDeleteClick = {
+                            speechManager.updateText("")
+                        },
                     )
                 }
             }

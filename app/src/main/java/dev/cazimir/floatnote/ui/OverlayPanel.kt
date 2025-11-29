@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
@@ -41,6 +42,7 @@ fun OverlayPanel(
     onFormatClick: () -> Unit,
     onCopyClick: () -> Unit,
     onShareClick: () -> Unit,
+    onDeleteClick: () -> Unit,
     onRequestPermission: () -> Unit,
     onDismiss: () -> Unit,
     onOpenSettings: () -> Unit = {},
@@ -224,36 +226,35 @@ fun OverlayPanel(
                             }
                         }
 
-                        // Secondary Actions: Format, Copy, Share
+                        // Secondary Actions: Format, Copy, Share, Delete
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalArrangement = Arrangement.SpaceEvenly // Distribute evenly
                         ) {
-                            // Format Button (Weight 1)
-                            Button(
+                            // Format
+                            FilledTonalIconButton(
                                 onClick = onFormatClick,
-                                modifier = Modifier.weight(1f),
                                 enabled = inputText.isNotBlank() && !isListening && !isFormatting,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                modifier = Modifier.size(50.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             ) {
                                 if (isFormatting) {
                                     CircularProgressIndicator(
-                                        modifier = Modifier.size(16.dp),
+                                        modifier = Modifier.size(20.dp),
                                         strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.onPrimary
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
                                 } else {
                                     Icon(
                                         imageVector = Icons.Default.AutoAwesome,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.tertiary, // Orange accent
-                                        modifier = Modifier.size(18.dp)
+                                        contentDescription = "Format",
+                                        tint = MaterialTheme.colorScheme.tertiary,
+                                        modifier = Modifier.size(24.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Format")
                                 }
                             }
 
@@ -275,6 +276,20 @@ fun OverlayPanel(
                                 shape = RoundedCornerShape(14.dp)
                             ) {
                                 Icon(Icons.Default.Share, contentDescription = "Share")
+                            }
+
+                            // Delete
+                            FilledTonalIconButton(
+                                onClick = onDeleteClick,
+                                enabled = inputText.isNotBlank(),
+                                modifier = Modifier.size(50.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete")
                             }
                         }
                     }
@@ -375,6 +390,7 @@ private fun OverlayPanelPreview_Default() {
                 onFormatClick = {},
                 onCopyClick = {},
                 onShareClick = {},
+                onDeleteClick = {},
                 onRequestPermission = {},
                 onDismiss = {},
                 modifier = Modifier
@@ -400,6 +416,7 @@ private fun OverlayPanelPreview_Listening() {
                 onFormatClick = {},
                 onCopyClick = {},
                 onShareClick = {},
+                onDeleteClick = {},
                 onRequestPermission = {},
                 onDismiss = {},
                 modifier = Modifier

@@ -27,5 +27,9 @@ class SettingsViewModel(private val settingsManager: SettingsManager) : ViewMode
     fun addRecentNote(note: String) {
         viewModelScope.launch { settingsManager.addRecentNote(note) }
     }
+
+    fun deleteRecentNote(note: String) {
+        viewModelScope.launch { settingsManager.deleteRecentNote(note) }
+    }
 }
 

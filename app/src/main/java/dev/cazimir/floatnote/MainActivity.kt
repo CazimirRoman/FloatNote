@@ -123,6 +123,7 @@ class MainActivity : ComponentActivity() {
                                 hasPermission = hasOverlayPermission,
                                 isServiceRunning = isServiceRunning,
                                 recentNotes = recentNotes,
+                                onDeleteNote = { note -> settingsViewModel.deleteRecentNote(note) },
                                 onRequestPermission = { requestOverlayPermission() },
                                 onStartService = { startBubbleService() },
                                 onStopService = { stopBubbleService() },

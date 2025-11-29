@@ -11,11 +11,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +36,7 @@ fun MainScreen(
     hasPermission: Boolean,
     isServiceRunning: Boolean,
     recentNotes: List<String>,
+    onDeleteNote: (String) -> Unit,
     onRequestPermission: () -> Unit,
     onStartService: () -> Unit,
     onStopService: () -> Unit,
@@ -172,7 +175,7 @@ fun MainScreen(
         if (recentNotes.isEmpty()) {
             EmptyRecentNotes(modifier = Modifier.weight(1f))
         } else {
-            RecentNotesList(notes = recentNotes, modifier = Modifier.weight(1f))
+            RecentNotesList(notes = recentNotes, onDeleteNote = onDeleteNote, modifier = Modifier.weight(1f))
         }
     }
 }
@@ -206,7 +209,7 @@ private fun EmptyRecentNotes(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun RecentNotesList(notes: List<String>, modifier: Modifier = Modifier) {
+private fun RecentNotesList(notes: List<String>, onDeleteNote: (String) -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     LazyColumn(
         modifier = modifier,
@@ -230,48 +233,67 @@ private fun RecentNotesList(notes: List<String>, modifier: Modifier = Modifier) 
                         overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        FilledTonalButton(
-                            onClick = {
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                val clip = ClipData.newPlainText("FloatNote", note)
-                                clipboard.setPrimaryClip(clip)
-                                android.widget.Toast.makeText(context, "Copied to clipboard", android.widget.Toast.LENGTH_SHORT).show()
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "Copy",
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Copy")
-                        }
-
-                        FilledTonalButton(
-                            onClick = {
-                                val sendIntent = Intent().apply {
-                                    action = Intent.ACTION_SEND
-                                    putExtra(Intent.EXTRA_TEXT, note)
-                                    type = "text/plain"
+                            Row(
+                                horizontalArrangement = Arrangement.End,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                // Copy button
+                                FilledTonalIconButton(
+                                    onClick = {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                        val clip = android.content.ClipData.newPlainText("FloatNote", note)
+                                        clipboard.setPrimaryClip(clip)
+                                        android.widget.Toast.makeText(context, "Copied to clipboard", android.widget.Toast.LENGTH_SHORT).show()
+                                    },
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ContentCopy,
+                                        contentDescription = "Copy",
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
-                                val shareIntent = Intent.createChooser(sendIntent, null)
-                                context.startActivity(shareIntent)
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = "Share",
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Share")
-                        }
-                    }
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                // Share button
+                                FilledTonalIconButton(
+                                    onClick = {
+                                        val sendIntent = Intent().apply {
+                                            action = Intent.ACTION_SEND
+                                            putExtra(Intent.EXTRA_TEXT, note)
+                                            type = "text/plain"
+                                        }
+                                        val shareIntent = Intent.createChooser(sendIntent, null)
+                                        context.startActivity(shareIntent)
+                                    },
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Share,
+                                        contentDescription = "Share",
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                // Delete button
+                                FilledTonalIconButton(
+                                    onClick = { onDeleteNote(note) },
+                                    modifier = Modifier.size(40.dp),
+                                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete",
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
                 }
             }
         }
@@ -287,6 +309,7 @@ private fun PreviewMainNoPermission() {
             hasPermission = false,
             isServiceRunning = false,
             recentNotes = emptyList(),
+            onDeleteNote = {},
             onRequestPermission = {},
             onStartService = {},
             onStopService = {}
@@ -302,6 +325,7 @@ private fun PreviewMainEmptyNotes() {
             hasPermission = true,
             isServiceRunning = false,
             recentNotes = emptyList(),
+            onDeleteNote = {},
             onRequestPermission = {},
             onStartService = {},
             onStopService = {}
@@ -317,6 +341,7 @@ private fun PreviewMainServiceRunning() {
             hasPermission = true,
             isServiceRunning = true,
             recentNotes = listOf("Example note one", "Example note two"),
+            onDeleteNote = {},
             onRequestPermission = {},
             onStartService = {},
             onStopService = {}
@@ -332,6 +357,7 @@ private fun PreviewMainPopulated() {
             hasPermission = true,
             isServiceRunning = false,
             recentNotes = List(5) { "Sample note #$it with some longer content to show ellipsis behavior" },
+            onDeleteNote = {},
             onRequestPermission = {},
             onStartService = {},
             onStopService = {}
@@ -347,6 +373,7 @@ private fun PreviewMainDark() {
             hasPermission = true,
             isServiceRunning = false,
             recentNotes = emptyList(),
+            onDeleteNote = {},
             onRequestPermission = {},
             onStartService = {},
             onStopService = {}

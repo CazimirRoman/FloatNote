@@ -73,6 +73,18 @@ class SettingsManager(
         }
     }
 
+    suspend fun deleteRecentNote(note: String) {
+        context.dataStore.edit { preferences ->
+            val currentNotes = preferences[KEY_RECENT_NOTES] ?: ""
+            if (currentNotes.isNotEmpty()) {
+                val notesList = currentNotes.split("|~|").toMutableList()
+                if (notesList.remove(note)) {
+                    preferences[KEY_RECENT_NOTES] = notesList.joinToString("|~|")
+                }
+            }
+        }
+    }
+
     companion object {
         private val KEY_API_KEY = stringPreferencesKey("api_key")
         private val KEY_LANGUAGE_CODE = stringPreferencesKey("language_code")
