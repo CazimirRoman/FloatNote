@@ -328,8 +328,8 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
         }
 
         panelParams = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             } else {
@@ -337,10 +337,12 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                 WindowManager.LayoutParams.TYPE_PHONE
             },
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                    WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
+                    WindowManager.LayoutParams.FLAG_DIM_BEHIND, // Dim background
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.CENTER
+            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+            dimAmount = 0.5f // Dim intensity
         }
 
         panelView = ComposeView(this).apply {

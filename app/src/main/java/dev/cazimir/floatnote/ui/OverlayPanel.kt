@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,139 +51,148 @@ fun OverlayPanel(
 ) {
     val configuration = LocalConfiguration.current
     val screenHeightDp = configuration.screenHeightDp
-    val maxPanelHeight = (screenHeightDp * 0.75f).dp
+    val maxPanelHeight = (screenHeightDp * 0.85f).dp // Increased max height
 
-    // Glassmorphism Card
-    Card(
+    // Full screen box to handle centering and outside clicks
+    Box(
         modifier = modifier
-            .widthIn(min = 340.dp, max = 480.dp)
-            .heightIn(min = 300.dp, max = maxPanelHeight),
-
-        shape = RoundedCornerShape(32.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.90f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // Shadow handled by border/background
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
-        )
+            .fillMaxSize()
+            .padding(16.dp) // Safety padding
+            .clickable(
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                indication = null
+            ) { onDismiss() }, // Dismiss on outside click
+        contentAlignment = Alignment.Center
     ) {
-        Column(
+        // Glassmorphism Card
+        Card(
             modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+                .widthIn(min = 340.dp, max = 480.dp)
+                .heightIn(min = 300.dp, max = maxPanelHeight)
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null
+                ) {}, // Consume clicks inside card
+            shape = RoundedCornerShape(32.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            border = androidx.compose.foundation.BorderStroke(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+            )
         ) {
-            // Header Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // App Icon Placeholder (could be an actual icon)
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "F",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "FloatNote",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                Row {
-                    IconButton(
-                        onClick = onOpenSettings,
-                        colors = IconButtonDefaults.iconButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    ) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
-                    IconButton(
-                        onClick = onDismiss,
-                        colors = IconButtonDefaults.iconButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    ) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
-                    }
-                }
-            }
-
-            if (!hasAudioPermission) {
-                PermissionRequestContent(onRequestPermission)
-            } else {
-                // Main Content
-                Column(
+                // Header Row
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Text Input Area - "Ghost" Style
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 140.dp, max = 320.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
-                            .padding(4.dp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // App Icon Placeholder (could be an actual icon)
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "F",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "FloatNote",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    Row {
+                        IconButton(
+                            onClick = onOpenSettings,
+                        ) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        }
+                        IconButton(
+                            onClick = onDismiss,
+                        ) {
+                            Icon(Icons.Default.Close, contentDescription = "Close")
+                        }
+                    }
+                }
+
+                if (!hasAudioPermission) {
+                    PermissionRequestContent(onRequestPermission)
+                } else {
+                    // Main Content - Flexible Height
+                    Column(
+                        modifier = Modifier.weight(1f), // Take available space
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        TextField(
-                            value = inputText,
-                            onValueChange = onInputTextChange,
-                            modifier = Modifier.fillMaxSize(),
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                lineHeight = 24.sp
-                            ),
-                            placeholder = {
-                                Text(
-                                    "Tap mic to speak...",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                )
-                            },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent,
-                                disabledBorderColor = Color.Transparent,
-                                errorBorderColor = Color.Transparent,
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                disabledContainerColor = Color.Transparent,
-                                errorContainerColor = Color.Transparent
-                            ),
-                            shape = RoundedCornerShape(16.dp),
-                            trailingIcon = {
-                                if (inputText.isNotEmpty()) {
-                                    IconButton(onClick = { onInputTextChange("") }) {
-                                        Icon(
-                                            imageVector = Icons.Default.Clear,
-                                            contentDescription = "Clear text",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                        // Text Input Area - "Ghost" Style
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f) // Fill remaining height in this column
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
+                                .padding(4.dp)
+                        ) {
+                            TextField(
+                                value = inputText,
+                                onValueChange = onInputTextChange,
+                                modifier = Modifier.fillMaxSize(),
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                    lineHeight = 20.sp,
+                                    fontSize = 15.sp // Slightly smaller/adjusted
+                                ),
+                                placeholder = {
+                                    Text(
+                                        "Tap mic to speak...",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    )
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color.Transparent,
+                                    unfocusedBorderColor = Color.Transparent,
+                                    disabledBorderColor = Color.Transparent,
+                                    errorBorderColor = Color.Transparent,
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    disabledContainerColor = Color.Transparent,
+                                    errorContainerColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                                trailingIcon = {
+                                    if (inputText.isNotEmpty()) {
+                                        IconButton(onClick = { onInputTextChange("") }) {
+                                            Icon(
+                                                imageVector = Icons.Default.Clear,
+                                                contentDescription = "Clear text",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
 
-                    // Action Buttons
+                    // Action Buttons - Fixed at bottom
                     Column(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
