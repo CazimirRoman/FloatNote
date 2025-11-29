@@ -225,7 +225,12 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
         errorMessage = ""
         checkAudioPermission()
         if (!hasAudioPermission) {
-            errorMessage = "Microphone permission not granted."
+            // Launch MainActivity to request permission
+            val intent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("REQUEST_AUDIO_PERMISSION", true)
+            }
+            startActivity(intent)
             return
         }
         serviceScope.launch {

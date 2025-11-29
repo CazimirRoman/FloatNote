@@ -36,6 +36,15 @@ class MainActivity : ComponentActivity() {
         checkOverlayPermission()
     }
     
+    private val audioPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        // Permission result is handled, service will check on next attempt
+        if (!isGranted) {
+            // Optionally show a message that microphone is needed for speech-to-text
+        }
+    }
+    
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -132,13 +141,9 @@ class MainActivity : ComponentActivity() {
 
         // Check if we should request audio permission
         if (intent.getBooleanExtra("REQUEST_AUDIO_PERMISSION", false)) {
-            if (!hasOverlayPermission) {
-                requestOverlayPermission()
-            }
+            audioPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+            intent.removeExtra("REQUEST_AUDIO_PERMISSION")
         }
-
-        // Check if we should open settings (handled in Compose, but we need to ensure intent is updated)
-        // The setIntent(intent) call above handles updating the intent for the Activity
     }
 
     override fun onResume() {
@@ -149,11 +154,12 @@ class MainActivity : ComponentActivity() {
     }
     
     private fun checkOverlayPermission() {
-        hasOverlayPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             Settings.canDrawOverlays(this)
         } else {
             true
         }
+        hasOverlayPermission = hasPermission
     }
     
     private fun requestOverlayPermission() {
