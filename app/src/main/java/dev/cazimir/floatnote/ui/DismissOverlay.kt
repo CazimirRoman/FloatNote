@@ -1,4 +1,4 @@
-package dev.cazimir.floatnote.ui
+package dev.cazimir.floatnote.feature.bubble
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -18,7 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.tooling.preview.Preview
-import dev.cazimir.floatnote.ui.theme.FloatNoteTheme
+import dev.cazimir.floatnote.core.ui.theme.FloatNoteTheme
 import androidx.compose.ui.unit.dp
 
 @Composable

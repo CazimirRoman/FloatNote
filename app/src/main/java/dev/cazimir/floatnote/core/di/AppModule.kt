@@ -1,4 +1,4 @@
-package dev.cazimir.floatnote.di
+package dev.cazimir.floatnote.core.di
 
 import dev.cazimir.floatnote.data.CryptoManager
 import dev.cazimir.floatnote.data.GeminiRepository

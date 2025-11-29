@@ -1,22 +1,29 @@
-package dev.cazimir.floatnote.service
+package dev.cazimir.floatnote.feature.bubble
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.Context
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
-import android.provider.Settings
+import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
+import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
+import android.view.View
 import android.view.WindowManager
+import android.widget.Toast
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.app.NotificationCompat
@@ -34,29 +41,27 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.cazimir.floatnote.MainActivity
 import dev.cazimir.floatnote.R
-import dev.cazimir.floatnote.ui.BubbleOverlay
-import dev.cazimir.floatnote.ui.OverlayPanel
+import dev.cazimir.floatnote.core.ui.theme.FloatNoteTheme
+import dev.cazimir.floatnote.data.GeminiRepository
 import dev.cazimir.floatnote.data.SettingsManager
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.widget.Toast
-import dev.cazimir.floatnote.ui.theme.FloatNoteTheme
+import dev.cazimir.floatnote.service.SpeechRecognitionManager
+import dev.cazimir.floatnote.service.SpeechState
+import dev.cazimir.floatnote.feature.bubble.DismissOverlay
+import dev.cazimir.floatnote.feature.bubble.OverlayPanel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import org.koin.android.ext.android.getKoin
 import org.koin.android.ext.android.inject
 import org.koin.core.parameter.parametersOf
-import androidx.compose.runtime.LaunchedEffect
-import org.koin.android.ext.android.getKoin
-import android.content.pm.ServiceInfo
-import dev.cazimir.floatnote.ui.DismissOverlay
 
+class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner,
+    ViewModelStoreOwner {
 
-class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
-    
     private lateinit var windowManager: WindowManager
     private var bubbleView: ComposeView? = null
     private var panelView: ComposeView? = null
@@ -64,9 +69,9 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
     private var panelParams: WindowManager.LayoutParams? = null
     private var dismissView: ComposeView? = null
     private var dismissParams: WindowManager.LayoutParams? = null
-    
+
     private val serviceScope = CoroutineScope(Dispatchers.Main)
-    
+
     // UI State
     private var isDismissHighlighted by mutableStateOf(false)
     private var isFormatting by mutableStateOf(false)
@@ -86,30 +91,30 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
 
     override val lifecycle: Lifecycle
         get() = lifecycleRegistry
-    
+
     override val savedStateRegistry: SavedStateRegistry
         get() = savedStateRegistryController.savedStateRegistry
-    
+
     override val viewModelStore: ViewModelStore
         get() = _viewModelStore
-    
+
     override fun onCreate() {
         super.onCreate()
-        
+
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
-        
+
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         createNotificationChannel()
-        
+
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
         } else {
             0
         }
-        
+
         ServiceCompat.startForeground(this, NOTIFICATION_ID, createNotification(), type)
-        
+
         if (Settings.canDrawOverlays(this)) {
             createBubbleOverlay()
         } else {
@@ -124,7 +129,7 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
             speechManager.initialize(lang)
         }
     }
-    
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "ACTION_PERMISSION_GRANTED") {
             hasAudioPermission = true
@@ -135,9 +140,9 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
         }
         return START_STICKY
     }
-    
+
     override fun onBind(intent: Intent?): IBinder? = null
-    
+
     override fun onDestroy() {
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         stopListeningInternal()
@@ -148,7 +153,7 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
         isRunning = false
         super.onDestroy()
     }
-    
+
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -158,12 +163,12 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
             ).apply {
                 description = getString(R.string.notification_channel_description)
             }
-            
+            // FIX: use instance method getSystemService instead of Context.getSystemService
             val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
+            notificationManager?.createNotificationChannel(channel)
         }
     }
-    
+
     private fun createNotification() = NotificationCompat.Builder(this, CHANNEL_ID)
         .setContentTitle(getString(R.string.notification_title))
         .setContentText(getString(R.string.notification_text))
@@ -177,7 +182,7 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
             )
         )
         .build()
-    
+
     private fun createBubbleOverlay() {
         bubbleParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -195,10 +200,10 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
             x = 100
             y = 100
         }
-        
+
         bubbleView = ComposeView(this).apply {
             setupComposeView(this)
-            
+
             setContent {
                 FloatNoteTheme {
                     BubbleOverlay(
@@ -209,15 +214,16 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                                 params.x += dx.toInt()
                                 params.y += dy.toInt()
                                 windowManager.updateViewLayout(this, params)
-                                
+
                                 // Check if bubble is at the bottom of the screen to dismiss
                                 val screenHeight = resources.displayMetrics.heightPixels
-                                val dismissThreshold = screenHeight - 800 // Increased to 600px from bottom
-                                
-                                if (dismissView?.visibility != android.view.View.VISIBLE) {
+                                val dismissThreshold =
+                                    screenHeight - 800 // Increased to 600px from bottom
+
+                                if (dismissView?.visibility != View.VISIBLE) {
                                     showDismissOverlay()
                                 }
-                                
+
                                 val isOverTarget = params.y > dismissThreshold
                                 if (isDismissHighlighted != isOverTarget) {
                                     isDismissHighlighted = isOverTarget
@@ -242,11 +248,11 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                 }
             }
         }
-        
+
         windowManager.addView(bubbleView, bubbleParams)
         createDismissOverlay()
     }
-    
+
     private fun createDismissOverlay() {
         dismissParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -257,12 +263,12 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                 @Suppress("DEPRECATION")
                 WindowManager.LayoutParams.TYPE_PHONE
             },
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or 
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
             WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         )
-        
+
         dismissView = ComposeView(this).apply {
             setupComposeView(this)
             setContent {
@@ -270,21 +276,21 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                     DismissOverlay(isHighlighted = isDismissHighlighted)
                 }
             }
-            visibility = android.view.View.GONE
+            visibility = View.GONE
         }
-        
+
         windowManager.addView(dismissView, dismissParams)
     }
-    
+
     private fun showDismissOverlay() {
-        dismissView?.visibility = android.view.View.VISIBLE
+        dismissView?.visibility = View.VISIBLE
     }
-    
+
     private fun hideDismissOverlay() {
-        dismissView?.visibility = android.view.View.GONE
+        dismissView?.visibility = View.GONE
         isDismissHighlighted = false
     }
-    
+
     private fun setupComposeView(composeView: ComposeView) {
         composeView.setViewTreeLifecycleOwner(this)
         composeView.setViewTreeViewModelStoreOwner(this)
@@ -320,7 +326,7 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
             removePanelOverlay()
             return
         }
-        
+
         panelParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -336,7 +342,7 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
         ).apply {
             gravity = Gravity.CENTER
         }
-        
+
         panelView = ComposeView(this).apply {
             setupComposeView(this)
 
@@ -344,7 +350,11 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                 FloatNoteTheme {
                     // Reactive language collection via SettingsManager from Koin
                     val reactiveLanguage by settingsManager.languageFlow.collectAsState(initial = currentLanguageCode)
-                    LaunchedEffect(reactiveLanguage) { currentLanguageCode = reactiveLanguage; speechManager.initialize(reactiveLanguage) }
+                    LaunchedEffect(reactiveLanguage) {
+                        currentLanguageCode = reactiveLanguage; speechManager.initialize(
+                        reactiveLanguage
+                    )
+                    }
                     val speechState by speechManager.state.collectAsState()
                     val recognizedText by speechManager.recognizedText.collectAsState()
 
@@ -360,10 +370,11 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                         onRequestPermission = { openMainActivityForPermission() },
                         onDismiss = { removePanelOverlay() },
                         onOpenSettings = {
-                            val intent = Intent(this@FloatingBubbleService, MainActivity::class.java).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                putExtra("OPEN_SETTINGS", true)
-                            }
+                            val intent =
+                                Intent(this@FloatingBubbleService, MainActivity::class.java).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    putExtra("OPEN_SETTINGS", true)
+                                }
                             startActivity(intent)
                             removePanelOverlay()
                         },
@@ -381,7 +392,8 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                                         return@launch
                                     }
 
-                                    val repository = getKoin().get<dev.cazimir.floatnote.data.GeminiRepository> { parametersOf(apiKey) }
+                                    val repository =
+                                        getKoin().get<GeminiRepository> { parametersOf(apiKey) }
                                     val result = repository.formatText(textToFormat)
                                     result.onSuccess { formattedText ->
                                         speechManager.updateText(formattedText)
@@ -399,22 +411,26 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                         },
                         onCopyClick = {
                             val textToCopy = recognizedText
-                            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
                             val clip = ClipData.newPlainText("FloatNote", textToCopy)
                             clipboard.setPrimaryClip(clip)
-            
+
                             // Save to recent notes
                             serviceScope.launch {
                                 settingsManager.addRecentNote(textToCopy)
                             }
-            
-                            Toast.makeText(this@FloatingBubbleService, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+
+                            Toast.makeText(
+                                this@FloatingBubbleService,
+                                "Copied to clipboard",
+                                Toast.LENGTH_SHORT
+                            ).show()
                             removePanelOverlay()
                         },
                         onShareClick = {
                             val textToShare = speechManager.recognizedText.value
                             if (textToShare.isBlank()) return@OverlayPanel
-            
+
                             // Save to recent notes
                             serviceScope.launch {
                                 settingsManager.addRecentNote(textToShare)
@@ -434,7 +450,7 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                     )
                 }
             }
-            
+
             setOnTouchListener { _, event ->
                 if (event.action == MotionEvent.ACTION_OUTSIDE) {
                     removePanelOverlay()
@@ -444,19 +460,19 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                 }
             }
         }
-        
+
         windowManager.addView(panelView, panelParams)
-        
+
         checkAudioPermission()
     }
-    
+
     private fun removeBubbleOverlay() {
         bubbleView?.let {
             windowManager.removeView(it)
             bubbleView = null
         }
     }
-    
+
     private fun removePanelOverlay() {
         stopListeningInternal()
         panelView?.let { windowManager.removeView(it); panelView = null }
@@ -465,7 +481,7 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
     private fun removeDismissOverlay() {
         dismissView?.let { windowManager.removeView(it); dismissView = null }
     }
-    
+
     private fun openMainActivityForPermission() {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -473,23 +489,23 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
         }
         startActivity(intent)
     }
-    
+
     private fun stopListeningInternal() {
         speechManager.stopListening()
         isListening = false
     }
 
     private fun checkAudioPermission() {
-        hasAudioPermission = checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        hasAudioPermission = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
     }
 
     companion object {
         private const val CHANNEL_ID = "FloatingBubbleChannel"
         private const val NOTIFICATION_ID = 1
-        
-        private val _serviceState = kotlinx.coroutines.flow.MutableStateFlow(false)
+
+        private val _serviceState = MutableStateFlow(false)
         val serviceState = _serviceState.asStateFlow()
-        
+
         var isRunning: Boolean
             get() = _serviceState.value
             set(value) { _serviceState.value = value }

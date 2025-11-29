@@ -1,4 +1,4 @@
-package dev.cazimir.floatnote.ui
+package dev.cazimir.floatnote.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -28,4 +28,3 @@ class SettingsViewModel(
         viewModelScope.launch { settingsManager.saveLanguage(code) }
     }
 }
-

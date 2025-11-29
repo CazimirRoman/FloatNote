@@ -1,4 +1,4 @@
-package dev.cazimir.floatnote.ui
+package dev.cazimir.floatnote.feature.bubble
 
 import android.content.Context
 import androidx.compose.foundation.background

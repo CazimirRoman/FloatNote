@@ -33,10 +33,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import android.content.Context
-import dev.cazimir.floatnote.service.FloatingBubbleService
-import dev.cazimir.floatnote.ui.SettingsScreen
-import dev.cazimir.floatnote.ui.theme.FloatNoteTheme
-import kotlinx.coroutines.launch
+import dev.cazimir.floatnote.feature.bubble.FloatingBubbleService
+import dev.cazimir.floatnote.feature.settings.SettingsScreen
+import dev.cazimir.floatnote.core.ui.theme.FloatNoteTheme
+import dev.cazimir.floatnote.feature.onboarding.OnboardingScreen
 import org.koin.androidx.compose.koinViewModel
 import dev.cazimir.floatnote.ui.viewmodel.SettingsViewModel
 
@@ -96,7 +96,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 if (showOnboarding) {
-                    dev.cazimir.floatnote.ui.OnboardingScreen(
+                    OnboardingScreen(
                         hasOverlayPermission = hasOverlayPermission,
                         onRequestOverlayPermission = { requestOverlayPermission() },
                         onSaveApiKey = { key -> settingsViewModel.saveApiKey(key) },

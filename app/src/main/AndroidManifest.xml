@@ -39,7 +39,7 @@
         
         <!-- Foreground service for floating bubble overlay -->
         <service
-            android:name=".service.FloatingBubbleService"
+            android:name=".feature.bubble.FloatingBubbleService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="specialUse">

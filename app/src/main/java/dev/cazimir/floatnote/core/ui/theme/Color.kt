@@ -1,4 +1,4 @@
-package dev.cazimir.floatnote.ui.theme
+package dev.cazimir.floatnote.core.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
