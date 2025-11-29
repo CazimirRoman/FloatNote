@@ -33,18 +33,18 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun OnboardingScreen(
-    hasAudioPermission: Boolean,
-    onRequestPermission: () -> Unit,
+    hasOverlayPermission: Boolean,
+    onRequestOverlayPermission: () -> Unit,
     onSaveApiKey: (String) -> Unit,
     onComplete: () -> Unit
 ) {
-    var currentStep by remember { mutableIntStateOf(if (hasAudioPermission) 1 else 0) }
+    var currentStep by remember { mutableIntStateOf(if (hasOverlayPermission) 1 else 0) }
     var apiKey by remember { mutableStateOf("") }
     var isApiKeyVisible by remember { mutableStateOf(false) }
 
     // Auto-advance if permission is granted while on step 0
-    LaunchedEffect(hasAudioPermission) {
-        if (hasAudioPermission && currentStep == 0) {
+    LaunchedEffect(hasOverlayPermission) {
+        if (hasOverlayPermission && currentStep == 0) {
             currentStep = 1
         }
     }
@@ -80,23 +80,23 @@ fun OnboardingScreen(
                 ) {
                     when (step) {
                         0 -> OnboardingStep(
-                            icon = Icons.Default.Mic,
-                            title = "Enable Microphone",
-                            description = "FloatNote needs access to your microphone to transcribe your speech instantly.",
+                            icon = Icons.Default.Visibility, // Use appropriate icon for overlay
+                            title = "Enable Overlay",
+                            description = "FloatNote needs permission to display over other apps so you can take notes anywhere.",
                             primaryAction = {
                                 Button(
-                                    onClick = onRequestPermission,
+                                    onClick = onRequestOverlayPermission,
                                     modifier = Modifier.fillMaxWidth().height(56.dp),
                                     shape = RoundedCornerShape(16.dp)
                                 ) {
-                                    Text("Grant Access", style = MaterialTheme.typography.titleMedium)
+                                    Text("Grant Permission", style = MaterialTheme.typography.titleMedium)
                                 }
                             }
                         )
                         1 -> OnboardingStep(
                             icon = Icons.Default.Key,
-                            title = "Configure AI",
-                            description = "Enter your Google Gemini API key to enable powerful AI text formatting and correction.",
+                            title = "Configure AI (Optional)",
+                            description = "Enter your Google Gemini API key to enable powerful AI text formatting. You can skip this and add it later in Settings.",
                             content = {
                                 OutlinedTextField(
                                     value = apiKey,
@@ -121,16 +121,19 @@ fun OnboardingScreen(
                                 )
                             },
                             primaryAction = {
-                                Button(
-                                    onClick = {
-                                        onSaveApiKey(apiKey)
-                                        currentStep = 2
-                                    },
-                                    enabled = apiKey.isNotBlank(),
-                                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                                    shape = RoundedCornerShape(16.dp)
-                                ) {
-                                    Text("Continue", style = MaterialTheme.typography.titleMedium)
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Button(
+                                        onClick = {
+                                            if (apiKey.isNotBlank()) {
+                                                onSaveApiKey(apiKey)
+                                            }
+                                            currentStep = 2
+                                        },
+                                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                                        shape = RoundedCornerShape(16.dp)
+                                    ) {
+                                        Text(if (apiKey.isNotBlank()) "Save & Continue" else "Skip for Now", style = MaterialTheme.typography.titleMedium)
+                                    }
                                 }
                             }
                         )

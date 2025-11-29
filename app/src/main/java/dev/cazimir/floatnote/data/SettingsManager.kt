@@ -43,8 +43,20 @@ class SettingsManager(private val context: Context) {
         }
     }
 
+    val isOnboardingCompletedFlow: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[KEY_ONBOARDING_COMPLETED] ?: false
+        }
+
+    suspend fun setOnboardingCompleted(completed: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[KEY_ONBOARDING_COMPLETED] = completed
+        }
+    }
+
     companion object {
         private val KEY_API_KEY = stringPreferencesKey("api_key")
         private val KEY_LANGUAGE_CODE = stringPreferencesKey("language_code")
+        private val KEY_ONBOARDING_COMPLETED = androidx.datastore.preferences.core.booleanPreferencesKey("onboarding_completed")
     }
 }

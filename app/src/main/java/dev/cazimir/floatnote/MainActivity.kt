@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import dev.cazimir.floatnote.service.FloatingBubbleService
 import dev.cazimir.floatnote.ui.SettingsScreen
 import dev.cazimir.floatnote.ui.theme.FloatNoteTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     
@@ -41,9 +42,19 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         checkOverlayPermission()
+        
+        val settingsManager = dev.cazimir.floatnote.data.SettingsManager(this)
 
         setContent {
             FloatNoteTheme {
+                val isOnboardingCompleted by settingsManager.isOnboardingCompletedFlow.collectAsState(initial = true) // Default to true to avoid flash, but logic below handles it
+                var showOnboarding by remember { mutableStateOf(false) }
+                
+                // Sync local state with flow, but only if we haven't manually dismissed it
+                LaunchedEffect(isOnboardingCompleted) {
+                    showOnboarding = !isOnboardingCompleted
+                }
+
                 // Open Settings when launched with OPEN_SETTINGS extra
                 LaunchedEffect(Unit) {
                     if (intent.getBooleanExtra("OPEN_SETTINGS", false)) {
@@ -52,39 +63,59 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    topBar = {
-                        TopAppBar(
-                            title = { Text(if (showSettings) stringResource(R.string.settings) else stringResource(R.string.app_name)) },
-                            navigationIcon = {
-                                if (showSettings) {
-                                    IconButton(onClick = { showSettings = false }) {
-                                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                                    }
-                                }
-                            },
-                            actions = {
-                                if (!showSettings) {
-                                    IconButton(onClick = { showSettings = true }) {
-                                        Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings")
-                                    }
-                                }
+                if (showOnboarding) {
+                    dev.cazimir.floatnote.ui.OnboardingScreen(
+                        hasOverlayPermission = hasOverlayPermission,
+                        onRequestOverlayPermission = { requestOverlayPermission() },
+                        onSaveApiKey = { key -> 
+                            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                                settingsManager.saveApiKey(key)
                             }
-                        )
-                    }
-                ) { innerPadding ->
-                    if (showSettings) {
-                        SettingsScreen(onNavigateBack = { showSettings = false })
-                    } else {
-                        MainScreen(
-                            hasPermission = hasOverlayPermission,
-                            isServiceRunning = isServiceRunning,
-                            onRequestPermission = { requestOverlayPermission() },
-                            onStartService = { startBubbleService() },
-                            onStopService = { stopBubbleService() },
-                            modifier = Modifier.padding(innerPadding)
-                        )
+                        },
+                        onComplete = {
+                            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                                settingsManager.setOnboardingCompleted(true)
+                            }
+                            showOnboarding = false
+                            // Auto-start the service after onboarding
+                            startBubbleService()
+                        }
+                    )
+                } else {
+                    Scaffold(
+                        modifier = Modifier.fillMaxSize(),
+                        topBar = {
+                            TopAppBar(
+                                title = { Text(if (showSettings) stringResource(R.string.settings) else stringResource(R.string.app_name)) },
+                                navigationIcon = {
+                                    if (showSettings) {
+                                        IconButton(onClick = { showSettings = false }) {
+                                            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                        }
+                                    }
+                                },
+                                actions = {
+                                    if (!showSettings) {
+                                        IconButton(onClick = { showSettings = true }) {
+                                            Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings")
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    ) { innerPadding ->
+                        if (showSettings) {
+                            SettingsScreen(onNavigateBack = { showSettings = false })
+                        } else {
+                            MainScreen(
+                                hasPermission = hasOverlayPermission,
+                                isServiceRunning = isServiceRunning,
+                                onRequestPermission = { requestOverlayPermission() },
+                                onStartService = { startBubbleService() },
+                                onStopService = { stopBubbleService() },
+                                modifier = Modifier.padding(innerPadding)
+                            )
+                        }
                     }
                 }
             }
