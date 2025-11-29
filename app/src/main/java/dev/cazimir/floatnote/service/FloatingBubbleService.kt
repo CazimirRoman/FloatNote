@@ -298,35 +298,33 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                             removePanelOverlay()
                         },
                         onFormatClick = {
-                            val current = recognizedText
-                            if (current.isBlank()) {
-                                errorMessage = "Please speak or type some text first."
-                                return@OverlayPanel
-                            }
-                            val runScope = CoroutineScope(Dispatchers.Main)
-                            runScope.launch {
-                                val apiKey = settingsManager.apiKeyFlow.first()
-                                if (apiKey.isBlank()) {
-                                    errorMessage = "Gemini API Key missing. Configure in Settings."
-                                    val intent = Intent(this@FloatingBubbleService, MainActivity::class.java).apply {
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        putExtra("OPEN_SETTINGS", true)
-                                    }
-                                    startActivity(intent)
-                                    return@launch
-                                }
-                                isFormatting = true
+                            val textToFormat = recognizedText
+                            if (textToFormat.isBlank()) return@OverlayPanel
+
+                            serviceScope.launch {
                                 try {
+                                    isFormatting = true
+                                    errorMessage = ""
+                                    val apiKey = settingsManager.apiKeyFlow.first()
+                                    if (apiKey.isBlank()) {
+                                        errorMessage = "Please set your Gemini API key in Settings"
+                                        return@launch
+                                    }
+
                                     val repository = getKoin().get<dev.cazimir.floatnote.data.GeminiRepository> { parametersOf(apiKey) }
-                                    val result = repository.formatText(current)
+                                    val result = repository.formatText(textToFormat)
                                     result.onSuccess { formattedText ->
                                         speechManager.updateText(formattedText)
-                                        errorMessage = ""
-                                        launch(Dispatchers.IO) { historyManager.addEntry(formattedText) }
-                                    }.onFailure { e -> errorMessage = "Error: ${e.localizedMessage}" }
+                                        // Save formatted text to recent notes
+                                        settingsManager.addRecentNote(formattedText)
+                                    }.onFailure { e ->
+                                        errorMessage = "Formatting failed: ${e.message}"
+                                    }
                                 } catch (e: Exception) {
-                                    errorMessage = "Error: ${e.localizedMessage}" }
-                                finally { isFormatting = false }
+                                    errorMessage = "Formatting failed: ${e.message}"
+                                } finally {
+                                    isFormatting = false
+                                }
                             }
                         },
                         onCopyClick = {
