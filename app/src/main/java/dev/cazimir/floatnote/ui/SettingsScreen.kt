@@ -39,7 +39,6 @@ fun SettingsScreen(
     val savedLanguage by settingsManager.languageFlow.collectAsState(initial = "en-US")
 
     var apiKey by remember(savedApiKey) { mutableStateOf(savedApiKey) }
-    // Update local state when flow emits new value if not already modified
     LaunchedEffect(savedApiKey) {
         if (apiKey.isEmpty()) {
             apiKey = savedApiKey
@@ -49,18 +48,26 @@ fun SettingsScreen(
     var isApiKeyVisible by remember { mutableStateOf(false) }
     var showSavedMessage by remember { mutableStateOf(false) }
 
-    // Language options (code, label, emoji flag)
-    val languages = listOf(
-        "en-US" to "English (US)" to "🇺🇸",
-        "en-GB" to "English (UK)" to "🇬🇧",
-        "es-ES" to "Spanish" to "🇪🇸",
-        "fr-FR" to "French" to "🇫🇷",
-        "de-DE" to "German" to "🇩🇪",
-        "it-IT" to "Italian" to "🇮🇹",
-        "pt-BR" to "Portuguese (BR)" to "🇧🇷",
-        "hi-IN" to "Hindi" to "🇮🇳",
-        "ro-RO" to "Romanian" to "🇷🇴"
-    )
+    // Language options - memoized
+    val languages = remember {
+        listOf(
+            "en-US" to "English (US)" to "🇺🇸",
+            "en-GB" to "English (UK)" to "🇬🇧",
+            "es-ES" to "Spanish" to "🇪🇸",
+            "fr-FR" to "French" to "🇫🇷",
+            "de-DE" to "German" to "🇩🇪",
+            "it-IT" to "Italian" to "🇮🇹",
+            "pt-BR" to "Portuguese (BR)" to "🇧🇷",
+            "hi-IN" to "Hindi" to "🇮🇳",
+            "ro-RO" to "Romanian" to "🇷🇴"
+        )
+    }
+    
+    // Memoize shapes
+    val cardShape = remember { RoundedCornerShape(24.dp) }
+    val textFieldShape = remember { RoundedCornerShape(12.dp) }
+    val buttonShape = remember { RoundedCornerShape(12.dp) }
+    val languageItemShape = remember { RoundedCornerShape(12.dp) }
 
     Scaffold(
         topBar = {
@@ -100,7 +107,7 @@ fun SettingsScreen(
                 SettingsSectionHeader("AI Configuration", Icons.Default.SmartToy)
                 
                 Card(
-                    shape = RoundedCornerShape(24.dp),
+                    shape = cardShape,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer
                     ),
@@ -133,7 +140,7 @@ fun SettingsScreen(
                             label = { Text("API Key") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = textFieldShape,
                             visualTransformation = if (isApiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             trailingIcon = {
                                 IconButton(onClick = { isApiKeyVisible = !isApiKeyVisible }) {
@@ -173,7 +180,7 @@ fun SettingsScreen(
                                         showSavedMessage = true
                                     }
                                 },
-                                shape = RoundedCornerShape(12.dp)
+                                shape = buttonShape
                             ) {
                                 Text("Save Key")
                             }
@@ -186,7 +193,7 @@ fun SettingsScreen(
                 SettingsSectionHeader("Language", Icons.Default.Language)
 
                 Card(
-                    shape = RoundedCornerShape(24.dp),
+                    shape = cardShape,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer
                     ),
@@ -209,60 +216,26 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            languages.forEach { item ->
-                                val (codeLabel, flag) = item.first to item.second
-                                val (code, label) = codeLabel
-                                val isSelected = savedLanguage == code
-                                
-                                Surface(
-                                    onClick = {
-                                        scope.launch { settingsManager.saveLanguage(code) }
-                                    },
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = if (isSelected) 
-                                        MaterialTheme.colorScheme.primaryContainer 
-                                    else 
-                                        MaterialTheme.colorScheme.surface,
-                                    tonalElevation = if (isSelected) 2.dp else 0.dp,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                text = flag,
-                                                style = MaterialTheme.typography.titleLarge
-                                            )
-                                            Spacer(modifier = Modifier.width(16.dp))
-                                            Text(
-                                                text = label,
-                                                style = MaterialTheme.typography.bodyLarge,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                            )
-                                        }
-                                        
-                                        if (isSelected) {
-                                            Icon(
-                                                imageVector = Icons.Default.Check,
-                                                contentDescription = "Selected",
-                                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
+            }
+
+            // Language items - using LazyColumn items for smooth scrolling
+            items(
+                items = languages,
+                key = { it.first.first }
+            ) { item ->
+                val (codeLabel, flag) = item.first to item.second
+                val (code, label) = codeLabel
+                val isSelected = savedLanguage == code
+                
+                LanguageItem(
+                    flag = flag,
+                    label = label,
+                    isSelected = isSelected,
+                    shape = languageItemShape,
+                    onClick = { scope.launch { settingsManager.saveLanguage(code) } }
+                )
             }
         }
     }
@@ -287,5 +260,56 @@ fun SettingsSectionHeader(title: String, icon: androidx.compose.ui.graphics.vect
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold
         )
+    }
+}
+
+@Composable
+private fun LanguageItem(
+    flag: String,
+    label: String,
+    isSelected: Boolean,
+    shape: RoundedCornerShape,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = shape,
+        color = if (isSelected) 
+            MaterialTheme.colorScheme.primaryContainer 
+        else 
+            MaterialTheme.colorScheme.surface,
+        tonalElevation = if (isSelected) 2.dp else 0.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = flag,
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+            
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Selected",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
     }
 }
