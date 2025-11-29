@@ -52,6 +52,7 @@ import org.koin.core.parameter.parametersOf
 import androidx.compose.runtime.LaunchedEffect
 import org.koin.android.ext.android.getKoin
 import android.content.pm.ServiceInfo
+import dev.cazimir.floatnote.ui.DismissOverlay
 
 
 class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
@@ -212,7 +213,7 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                                 
                                 // Check if bubble is at the bottom of the screen to dismiss
                                 val screenHeight = resources.displayMetrics.heightPixels
-                                val dismissThreshold = screenHeight - 200 // 200px from bottom
+                                val dismissThreshold = screenHeight - 800 // Increased to 600px from bottom
                                 
                                 if (dismissView?.visibility != android.view.View.VISIBLE) {
                                     showDismissOverlay()
@@ -232,7 +233,7 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                             // Check final position
                             bubbleParams?.let { params ->
                                 val screenHeight = resources.displayMetrics.heightPixels
-                                val dismissThreshold = screenHeight - 200
+                                val dismissThreshold = screenHeight - 600
                                 if (params.y > dismissThreshold) {
                                     stopSelf()
                                 }
@@ -267,7 +268,7 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
             setupComposeView(this)
             setContent {
                 FloatNoteTheme {
-                    dev.cazimir.floatnote.ui.DismissOverlay(isHighlighted = isDismissHighlighted)
+                    DismissOverlay(isHighlighted = isDismissHighlighted)
                 }
             }
             visibility = android.view.View.GONE
