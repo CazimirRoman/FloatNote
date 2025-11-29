@@ -58,14 +58,23 @@ class SettingsManager(
     val recentNotesFlow: Flow<List<String>> = context.dataStore.data
         .map { preferences ->
             val notesString = preferences[KEY_RECENT_NOTES] ?: ""
-            if (notesString.isEmpty()) emptyList() else notesString.split("|~|")
+            if (notesString.isEmpty()) {
+                emptyList()
+            } else {
+                // Ensure uniqueness on read to prevent crashes
+                notesString.split("|~|").distinct()
+            }
         }
 
     suspend fun addRecentNote(note: String) {
         context.dataStore.edit { preferences ->
             val currentNotes = preferences[KEY_RECENT_NOTES] ?: ""
             val notesList = if (currentNotes.isEmpty()) mutableListOf() else currentNotes.split("|~|").toMutableList()
+            
+            // Remove ALL instances if exists to avoid duplicates and move to top
+            notesList.removeAll { it == note }
             notesList.add(0, note) // Add to top
+            
             if (notesList.size > 10) { // Keep last 10
                 notesList.removeAt(notesList.lastIndex)
             }

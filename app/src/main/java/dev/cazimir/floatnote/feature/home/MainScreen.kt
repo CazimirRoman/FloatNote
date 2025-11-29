@@ -17,7 +17,9 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
+import androidx.compose.animation.togetherWith
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.runtime.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -172,10 +174,19 @@ fun MainScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (recentNotes.isEmpty()) {
-            EmptyRecentNotes(modifier = Modifier.weight(1f))
-        } else {
-            RecentNotesList(notes = recentNotes, onDeleteNote = onDeleteNote, modifier = Modifier.weight(1f))
+        androidx.compose.animation.AnimatedContent(
+            targetState = recentNotes.isEmpty(),
+            transitionSpec = {
+                androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(300)) togetherWith
+                        androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(300))
+            },
+            label = "RecentNotesTransition"
+        ) { isEmpty ->
+            if (isEmpty) {
+                EmptyRecentNotes(modifier = Modifier.fillMaxWidth().weight(1f))
+            } else {
+                RecentNotesList(notes = recentNotes, onDeleteNote = onDeleteNote, modifier = Modifier.fillMaxWidth().weight(1f))
+            }
         }
     }
 }
@@ -210,90 +221,126 @@ private fun EmptyRecentNotes(modifier: Modifier = Modifier) {
 
 @Composable
 private fun RecentNotesList(notes: List<String>, onDeleteNote: (String) -> Unit, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
     LazyColumn(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(bottom = 16.dp)
     ) {
-        items(notes) { note ->
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = note,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                            Row(
-                                horizontalArrangement = Arrangement.End,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                // Copy button
-                                FilledTonalIconButton(
-                                    onClick = {
-                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                        val clip = android.content.ClipData.newPlainText("FloatNote", note)
-                                        clipboard.setPrimaryClip(clip)
-                                        android.widget.Toast.makeText(context, "Copied to clipboard", android.widget.Toast.LENGTH_SHORT).show()
-                                    },
-                                    modifier = Modifier.size(40.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.ContentCopy,
-                                        contentDescription = "Copy",
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                
-                                Spacer(modifier = Modifier.width(8.dp))
-                                
-                                // Share button
-                                FilledTonalIconButton(
-                                    onClick = {
-                                        val sendIntent = Intent().apply {
-                                            action = Intent.ACTION_SEND
-                                            putExtra(Intent.EXTRA_TEXT, note)
-                                            type = "text/plain"
-                                        }
-                                        val shareIntent = Intent.createChooser(sendIntent, null)
-                                        context.startActivity(shareIntent)
-                                    },
-                                    modifier = Modifier.size(40.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Share,
-                                        contentDescription = "Share",
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
+        items(
+            items = notes,
+            key = { it } // Use note content as key since we ensure uniqueness
+        ) { note ->
+            RecentNoteItem(
+                note = note,
+                onDelete = { onDeleteNote(note) },
+                modifier = Modifier.animateItem()
+            )
+        }
+    }
+}
 
-                                Spacer(modifier = Modifier.width(8.dp))
+@Composable
+private fun RecentNoteItem(
+    note: String,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var isVisible by remember { mutableStateOf(true) }
+    val context = LocalContext.current
 
-                                // Delete button
-                                FilledTonalIconButton(
-                                    onClick = { onDeleteNote(note) },
-                                    modifier = Modifier.size(40.dp),
-                                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete",
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
+    LaunchedEffect(isVisible) {
+        if (!isVisible) {
+            kotlinx.coroutines.delay(300) // Wait for animation
+            onDelete()
+        }
+    }
+
+    androidx.compose.animation.AnimatedVisibility(
+        visible = isVisible,
+        exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut(),
+        modifier = modifier
+    ) {
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = note,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Copy button
+                    FilledTonalIconButton(
+                        onClick = {
+                            val clipboard =
+                                context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("FloatNote", note)
+                            clipboard.setPrimaryClip(clip)
+                            android.widget.Toast.makeText(
+                                context,
+                                "Copied to clipboard",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "Copy",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Share button
+                    FilledTonalIconButton(
+                        onClick = {
+                            val sendIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                putExtra(Intent.EXTRA_TEXT, note)
+                                type = "text/plain"
                             }
+                            val shareIntent = Intent.createChooser(sendIntent, null)
+                            context.startActivity(shareIntent)
+                        },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Share",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Delete button
+                    FilledTonalIconButton(
+                        onClick = { isVisible = false },
+                        modifier = Modifier.size(40.dp),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }
