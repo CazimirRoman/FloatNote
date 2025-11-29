@@ -54,9 +54,28 @@ class SettingsManager(private val context: Context) {
         }
     }
 
+    val recentNotesFlow: Flow<List<String>> = context.dataStore.data
+        .map { preferences ->
+            val notesString = preferences[KEY_RECENT_NOTES] ?: ""
+            if (notesString.isEmpty()) emptyList() else notesString.split("|~|")
+        }
+
+    suspend fun addRecentNote(note: String) {
+        context.dataStore.edit { preferences ->
+            val currentNotes = preferences[KEY_RECENT_NOTES] ?: ""
+            val notesList = if (currentNotes.isEmpty()) mutableListOf() else currentNotes.split("|~|").toMutableList()
+            notesList.add(0, note) // Add to top
+            if (notesList.size > 10) { // Keep last 10
+                notesList.removeAt(notesList.lastIndex)
+            }
+            preferences[KEY_RECENT_NOTES] = notesList.joinToString("|~|")
+        }
+    }
+
     companion object {
         private val KEY_API_KEY = stringPreferencesKey("api_key")
         private val KEY_LANGUAGE_CODE = stringPreferencesKey("language_code")
         private val KEY_ONBOARDING_COMPLETED = androidx.datastore.preferences.core.booleanPreferencesKey("onboarding_completed")
+        private val KEY_RECENT_NOTES = stringPreferencesKey("recent_notes")
     }
 }

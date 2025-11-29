@@ -4,6 +4,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import android.graphics.PixelFormat
@@ -329,21 +330,39 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
                             }
                         },
                         onCopyClick = {
-                            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = ClipData.newPlainText("FloatNote", recognizedText)
+                            val textToCopy = recognizedText
+                            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("FloatNote", textToCopy)
                             clipboard.setPrimaryClip(clip)
+            
+                            // Save to recent notes
+                            serviceScope.launch {
+                                settingsManager.addRecentNote(textToCopy)
+                            }
+            
                             Toast.makeText(this@FloatingBubbleService, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                            removePanelOverlay()
                         },
                         onShareClick = {
+                            val textToShare = speechManager.recognizedText.value
+                            if (textToShare.isBlank()) return@OverlayPanel
+            
+                            // Save to recent notes
+                            serviceScope.launch {
+                                settingsManager.addRecentNote(textToShare)
+                            }
+
                             val sendIntent: Intent = Intent().apply {
                                 action = Intent.ACTION_SEND
-                                putExtra(Intent.EXTRA_TEXT, recognizedText)
+                                putExtra(Intent.EXTRA_TEXT, textToShare)
                                 type = "text/plain"
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
                             }
-                            val shareIntent = Intent.createChooser(sendIntent, null).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                            val shareIntent = Intent.createChooser(sendIntent, null)
+                            shareIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                             startActivity(shareIntent)
-                        }
+                            removePanelOverlay()
+                        },
                     )
                 }
             }
