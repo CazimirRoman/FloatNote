@@ -39,6 +39,7 @@ import dev.cazimir.floatnote.ui.OverlayPanel
 import dev.cazimir.floatnote.data.SettingsManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -60,10 +61,13 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
     private var panelView: ComposeView? = null
     private var bubbleParams: WindowManager.LayoutParams? = null
     private var panelParams: WindowManager.LayoutParams? = null
+    private var dismissView: ComposeView? = null
+    private var dismissParams: WindowManager.LayoutParams? = null
     
     private val serviceScope = CoroutineScope(Dispatchers.Main)
     
     // UI State
+    private var isDismissHighlighted by mutableStateOf(false)
     private var isFormatting by mutableStateOf(false)
     private var errorMessage by mutableStateOf("")
     private var hasAudioPermission by mutableStateOf(false)
@@ -140,6 +144,7 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
         serviceScope.cancel()
         removeBubbleOverlay()
         removePanelOverlay()
+        removeDismissOverlay()
         isRunning = false
         super.onDestroy()
     }
@@ -197,15 +202,41 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
             setContent {
                 FloatNoteTheme {
                     BubbleOverlay(
+                        context = this@FloatingBubbleService,
+                        settingsManager = settingsManager,
                         onDrag = { dx, dy ->
                             bubbleParams?.let { params ->
                                 params.x += dx.toInt()
                                 params.y += dy.toInt()
                                 windowManager.updateViewLayout(this, params)
+                                
+                                // Check if bubble is at the bottom of the screen to dismiss
+                                val screenHeight = resources.displayMetrics.heightPixels
+                                val dismissThreshold = screenHeight - 200 // 200px from bottom
+                                
+                                if (dismissView?.visibility != android.view.View.VISIBLE) {
+                                    showDismissOverlay()
+                                }
+                                
+                                val isOverTarget = params.y > dismissThreshold
+                                if (isDismissHighlighted != isOverTarget) {
+                                    isDismissHighlighted = isOverTarget
+                                }
                             }
                         },
-                        onTap = {
+                        onExpand = {
                             showPanelOverlay()
+                        },
+                        onDismiss = {
+                            hideDismissOverlay()
+                            // Check final position
+                            bubbleParams?.let { params ->
+                                val screenHeight = resources.displayMetrics.heightPixels
+                                val dismissThreshold = screenHeight - 200
+                                if (params.y > dismissThreshold) {
+                                    stopSelf()
+                                }
+                            }
                         }
                     )
                 }
@@ -213,6 +244,45 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
         }
         
         windowManager.addView(bubbleView, bubbleParams)
+        createDismissOverlay()
+    }
+    
+    private fun createDismissOverlay() {
+        dismissParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            } else {
+                @Suppress("DEPRECATION")
+                WindowManager.LayoutParams.TYPE_PHONE
+            },
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or 
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT
+        )
+        
+        dismissView = ComposeView(this).apply {
+            setupComposeView(this)
+            setContent {
+                FloatNoteTheme {
+                    dev.cazimir.floatnote.ui.DismissOverlay(isHighlighted = isDismissHighlighted)
+                }
+            }
+            visibility = android.view.View.GONE
+        }
+        
+        windowManager.addView(dismissView, dismissParams)
+    }
+    
+    private fun showDismissOverlay() {
+        dismissView?.visibility = android.view.View.VISIBLE
+    }
+    
+    private fun hideDismissOverlay() {
+        dismissView?.visibility = android.view.View.GONE
+        isDismissHighlighted = false
     }
     
     private fun setupComposeView(composeView: ComposeView) {
@@ -391,6 +461,10 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
         stopListeningInternal()
         panelView?.let { windowManager.removeView(it); panelView = null }
     }
+
+    private fun removeDismissOverlay() {
+        dismissView?.let { windowManager.removeView(it); dismissView = null }
+    }
     
     private fun openMainActivityForPermission() {
         val intent = Intent(this, MainActivity::class.java).apply {
@@ -412,6 +486,12 @@ class FloatingBubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner
     companion object {
         private const val CHANNEL_ID = "FloatingBubbleChannel"
         private const val NOTIFICATION_ID = 1
-        @Volatile var isRunning: Boolean = false
+        
+        private val _serviceState = kotlinx.coroutines.flow.MutableStateFlow(false)
+        val serviceState = _serviceState.asStateFlow()
+        
+        var isRunning: Boolean
+            get() = _serviceState.value
+            set(value) { _serviceState.value = value }
     }
 }

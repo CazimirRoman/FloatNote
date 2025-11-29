@@ -72,6 +72,13 @@ class MainActivity : ComponentActivity() {
             FloatNoteTheme {
                 val isOnboardingCompleted by settingsManager.isOnboardingCompletedFlow.collectAsState(initial = true)
                 val recentNotes by settingsManager.recentNotesFlow.collectAsState(initial = emptyList())
+                val isServiceRunningState by FloatingBubbleService.serviceState.collectAsState()
+                
+                // Update local state when flow changes
+                LaunchedEffect(isServiceRunningState) {
+                    isServiceRunning = isServiceRunningState
+                }
+                
                 var showOnboarding by remember { mutableStateOf(false) }
                 
                 // Sync local state with flow, but only if we haven't manually dismissed it
@@ -166,7 +173,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         checkOverlayPermission()
         // Sync UI with actual service state
-        isServiceRunning = FloatingBubbleService.isRunning
+        // isServiceRunning = FloatingBubbleService.isRunning // Removed in favor of Flow collection in setContent
     }
     
     private fun checkOverlayPermission() {

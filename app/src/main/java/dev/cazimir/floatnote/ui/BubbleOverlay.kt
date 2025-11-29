@@ -1,13 +1,25 @@
 package dev.cazimir.floatnote.ui
 
+import android.content.Context
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -16,9 +28,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalContext
 import dev.cazimir.floatnote.data.SettingsManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
@@ -27,12 +42,13 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun BubbleOverlay(
+    context: Context,
+    settingsManager: SettingsManager,
     onDrag: (Float, Float) -> Unit,
-    onTap: () -> Unit,
+    onExpand: () -> Unit,
+    onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val settingsManager = remember { SettingsManager(context) }
     val language by settingsManager.languageFlow.collectAsState(initial = "en-US")
 
     // Map language code to flag
@@ -51,18 +67,18 @@ fun BubbleOverlay(
     }
 
     var isDragging by remember { mutableStateOf(false) }
-
+    
     Box(
         modifier = modifier
             .size(60.dp)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primary)
+            .background(MaterialTheme.colorScheme.primaryContainer)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) {
                 if (!isDragging) {
-                    onTap()
+                    onExpand()
                 }
             }
             .pointerInput(Unit) {
@@ -70,12 +86,12 @@ fun BubbleOverlay(
                     var dragJob: Job? = null
                     detectDragGestures(
                         onDragStart = {
-                            isDragging = false
+                            isDragging = true
                         },
                         onDrag = { change, dragAmount ->
-                            isDragging = true
                             change.consume()
-                            // Throttle updates to ~60 Hz to reduce WindowManager churn
+                            
+                            // Update WindowManager position
                             dragJob?.cancel()
                             dragJob = launch {
                                 onDrag(dragAmount.x, dragAmount.y)
@@ -85,6 +101,7 @@ fun BubbleOverlay(
                         onDragEnd = {
                             isDragging = false
                             dragJob?.cancel()
+                            onDismiss() // Check if we should dismiss based on final position
                         },
                         onDragCancel = {
                             isDragging = false
@@ -98,7 +115,7 @@ fun BubbleOverlay(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "FN",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
                 fontSize = 18.sp,
                 style = MaterialTheme.typography.titleMedium
             )
