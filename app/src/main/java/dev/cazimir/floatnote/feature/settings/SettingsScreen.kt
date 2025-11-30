@@ -70,15 +70,16 @@ fun SettingsScreen(
                 title = {
                     Text(
                         "Settings",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 },
@@ -94,9 +95,9 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
-            contentPadding = PaddingValues(bottom = 32.dp)
+            contentPadding = PaddingValues(bottom = 32.dp, top = 16.dp)
         ) {
             item {
                 SettingsSectionHeader("AI Configuration", Icons.Default.SmartToy)
@@ -104,9 +105,10 @@ fun SettingsScreen(
                 Card(
                     shape = cardShape,
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) // Cleaner look
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Column(
                         modifier = Modifier
@@ -116,8 +118,8 @@ fun SettingsScreen(
                     ) {
                         Text(
                             text = "Gemini API Key",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
                         Text(
@@ -137,11 +139,18 @@ fun SettingsScreen(
                             singleLine = true,
                             shape = textFieldShape,
                             visualTransformation = if (isApiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                cursorColor = MaterialTheme.colorScheme.primary
+                            ),
                             trailingIcon = {
                                 IconButton(onClick = { isApiKeyVisible = !isApiKeyVisible }) {
                                     Icon(
                                         imageVector = if (isApiKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                        contentDescription = if (isApiKeyVisible) "Hide" else "Show"
+                                        contentDescription = if (isApiKeyVisible) "Hide" else "Show",
+                                        tint = MaterialTheme.colorScheme.outline
                                     )
                                 }
                             }
@@ -161,9 +170,9 @@ fun SettingsScreen(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "Saved!",
+                                    text = "Saved",
                                     color = MaterialTheme.colorScheme.primary,
-                                    style = MaterialTheme.typography.labelLarge
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                                 )
                                 Spacer(modifier = Modifier.width(16.dp))
                             }
@@ -173,7 +182,11 @@ fun SettingsScreen(
                                     viewModel.saveApiKey(apiKey)
                                     showSavedMessage = true
                                 },
-                                shape = buttonShape
+                                shape = buttonShape,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                )
                             ) {
                                 Text("Save Key")
                             }
@@ -188,9 +201,10 @@ fun SettingsScreen(
                 Card(
                     shape = cardShape,
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Column(
                         modifier = Modifier
@@ -200,8 +214,8 @@ fun SettingsScreen(
                     ) {
                         Text(
                             text = "Speech Recognition Language",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         
                         Text(
