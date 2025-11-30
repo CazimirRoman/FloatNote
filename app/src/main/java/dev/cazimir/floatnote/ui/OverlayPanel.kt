@@ -64,7 +64,7 @@ fun OverlayPanel(
             ) { onDismiss() }, // Dismiss on outside click
         contentAlignment = Alignment.Center
     ) {
-        // Glassmorphism Card
+        // Clean Card
         Card(
             modifier = Modifier
                 .widthIn(min = 340.dp, max = 480.dp)
@@ -75,13 +75,10 @@ fun OverlayPanel(
                 ) {}, // Consume clicks inside card
             shape = RoundedCornerShape(32.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f)
+                containerColor = MaterialTheme.colorScheme.surface // Clean white/black
             ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            border = androidx.compose.foundation.BorderStroke(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
-            )
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp), // Add shadow for depth
+            border = null // Remove border for cleaner look
         ) {
             Column(
                 modifier = Modifier
@@ -96,40 +93,34 @@ fun OverlayPanel(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // App Icon Placeholder (could be an actual icon)
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                "F",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.Mic,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = "FloatNote",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
                     Row {
-                        IconButton(
-                            onClick = onOpenSettings,
-                        ) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                        IconButton(
-                            onClick = onDismiss,
-                        ) {
-                            Icon(Icons.Default.Close, contentDescription = "Close")
+                        IconButton(onClick = onDismiss) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -142,28 +133,28 @@ fun OverlayPanel(
                         modifier = Modifier.weight(1f), // Take available space
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Text Input Area - "Ghost" Style
+                        // Text Input Area - Clean Sheet Style
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f) // Fill remaining height in this column
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
-                                .padding(4.dp)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)) // Very subtle background
+                                .padding(8.dp)
                         ) {
                             TextField(
                                 value = inputText,
                                 onValueChange = onInputTextChange,
                                 modifier = Modifier.fillMaxSize(),
-                                textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                    lineHeight = 20.sp,
-                                    fontSize = 15.sp // Slightly smaller/adjusted
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                    lineHeight = 24.sp,
+                                    fontSize = 16.sp
                                 ),
                                 placeholder = {
                                     Text(
                                         "Tap mic to speak...",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                     )
                                 },
                                 colors = OutlinedTextFieldDefaults.colors(
@@ -174,9 +165,9 @@ fun OverlayPanel(
                                     focusedContainerColor = Color.Transparent,
                                     unfocusedContainerColor = Color.Transparent,
                                     disabledContainerColor = Color.Transparent,
-                                    errorContainerColor = Color.Transparent
+                                    errorContainerColor = Color.Transparent,
+                                    cursorColor = MaterialTheme.colorScheme.primary
                                 ),
-                                shape = RoundedCornerShape(16.dp),
                                 trailingIcon = {
                                     if (inputText.isNotEmpty()) {
                                         IconButton(onClick = { onInputTextChange("") }) {
@@ -194,44 +185,51 @@ fun OverlayPanel(
 
                     // Action Buttons - Fixed at bottom
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         // Primary Action: Mic / Stop
-                        FilledTonalButton(
+                        Button(
                             onClick = {
                                 if (isListening) onStopListening() else onStartListening()
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(56.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.filledTonalButtonColors(
+                            shape = RoundedCornerShape(50), // Pill shape
+                            colors = ButtonDefaults.buttonColors(
                                 containerColor = if (isListening)
-                                    MaterialTheme.colorScheme.errorContainer
+                                    MaterialTheme.colorScheme.tertiary // Red for recording
                                 else
-                                    MaterialTheme.colorScheme.primaryContainer,
+                                    MaterialTheme.colorScheme.primary, // Black/White
                                 contentColor = if (isListening)
-                                    MaterialTheme.colorScheme.onErrorContainer
+                                    MaterialTheme.colorScheme.onTertiary
                                 else
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                            )
+                                    MaterialTheme.colorScheme.onPrimary
+                            ),
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                         ) {
                             AnimatedVisibility(visible = isListening) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     CircularProgressIndicator(
-                                        modifier = Modifier.size(18.dp),
+                                        modifier = Modifier.size(20.dp),
                                         strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                        color = MaterialTheme.colorScheme.onTertiary
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
-                                    Text("Listening...", style = MaterialTheme.typography.titleMedium)
+                                    Text(
+                                        "Listening...",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                                    )
                                 }
                             }
                             AnimatedVisibility(visible = !isListening) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.Mic, contentDescription = null)
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text("Start Recording", style = MaterialTheme.typography.titleMedium)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "Start Recording",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                                    )
                                 }
                             }
                         }
@@ -239,67 +237,54 @@ fun OverlayPanel(
                         // Secondary Actions: Format, Copy, Share, Delete
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly // Distribute evenly
+                            horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
                             // Format
-                            FilledTonalIconButton(
+                            IconButton(
                                 onClick = onFormatClick,
                                 enabled = inputText.isNotBlank() && !isListening && !isFormatting,
-                                modifier = Modifier.size(50.dp),
-                                shape = RoundedCornerShape(14.dp),
-                                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
+                                modifier = Modifier.size(48.dp)
                             ) {
                                 if (isFormatting) {
                                     CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
+                                        modifier = Modifier.size(24.dp),
                                         strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 } else {
                                     Icon(
                                         imageVector = Icons.Default.AutoAwesome,
                                         contentDescription = "Format",
-                                        tint = MaterialTheme.colorScheme.tertiary,
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(24.dp)
                                     )
                                 }
                             }
 
                             // Copy
-                            FilledTonalIconButton(
+                            IconButton(
                                 onClick = onCopyClick,
                                 enabled = inputText.isNotBlank(),
-                                modifier = Modifier.size(50.dp),
-                                shape = RoundedCornerShape(14.dp)
+                                modifier = Modifier.size(48.dp)
                             ) {
-                                Icon(Icons.Default.ContentCopy, contentDescription = "Copy")
+                                Icon(
+                                    Icons.Default.ContentCopy,
+                                    contentDescription = "Copy",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
 
                             // Share
-                            FilledTonalIconButton(
+                            IconButton(
                                 onClick = onShareClick,
                                 enabled = inputText.isNotBlank(),
-                                modifier = Modifier.size(50.dp),
-                                shape = RoundedCornerShape(14.dp)
+                                modifier = Modifier.size(48.dp)
                             ) {
-                                Icon(Icons.Default.Share, contentDescription = "Share")
-                            }
-
-                            // Delete
-                            FilledTonalIconButton(
-                                onClick = onDeleteClick,
-                                enabled = inputText.isNotBlank(),
-                                modifier = Modifier.size(50.dp),
-                                shape = RoundedCornerShape(14.dp),
-                                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                Icon(
+                                    Icons.Default.Share,
+                                    contentDescription = "Share",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                            ) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete")
                             }
                         }
                     }

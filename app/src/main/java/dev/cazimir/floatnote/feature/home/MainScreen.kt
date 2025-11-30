@@ -1,191 +1,154 @@
 package dev.cazimir.floatnote.feature.home
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.content.ClipboardManager
-import android.content.ClipData
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.animation.togetherWith
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.runtime.*
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import dev.cazimir.floatnote.R
 import dev.cazimir.floatnote.core.ui.theme.FloatNoteTheme
+import kotlinx.coroutines.delay
 
 @Composable
 fun MainScreen(
-    hasPermission: Boolean,
-    isServiceRunning: Boolean,
+    serviceState: Boolean,
+    onToggleService: () -> Unit,
+    onOpenSettings: () -> Unit,
     recentNotes: List<String>,
     onDeleteNote: (String) -> Unit,
-    onRequestPermission: () -> Unit,
-    onStartService: () -> Unit,
-    onStopService: () -> Unit,
-    modifier: Modifier = Modifier
+    // Keep these for compatibility if needed, but we are using the new signature
+    hasPermission: Boolean = true,
+    isServiceRunning: Boolean = false,
+    onRequestPermission: () -> Unit = {},
+    onStartService: () -> Unit = {},
+    onStopService: () -> Unit = {}
 ) {
+    // Adapter logic to handle old parameters if called from MainActivity
+    val effectiveServiceState = if (isServiceRunning) true else serviceState
+    val effectiveToggleService = if (isServiceRunning) onStopService else onStartService
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // App Header
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(top = 16.dp, bottom = 32.dp)
-        ) {
-            Text(
-                text = "🔵", // Placeholder for icon
-                style = MaterialTheme.typography.displaySmall
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-
-        // Service Control Section
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = effectiveToggleService,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = RoundedCornerShape(50),
+                modifier = Modifier
+                    .padding(bottom = 16.dp)
+                    .height(56.dp)
             ) {
-                if (!hasPermission) {
-                    Text(
-                        text = "Overlay Permission Required",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.error
+                Icon(
+                    imageVector = if (effectiveServiceState) Icons.Default.Stop else Icons.Default.Mic,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (effectiveServiceState) "Stop Service" else "Start Recording",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+            }
+        },
+        floatingActionButtonPosition = FabPosition.Center
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 20.dp)
+        ) {
+            // Header
+            Spacer(modifier = Modifier.height(20.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "FloatNote",
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "FloatNote needs permission to display over other apps.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                IconButton(onClick = onOpenSettings) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Settings",
+                        tint = MaterialTheme.colorScheme.onBackground
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = onRequestPermission,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Text("Grant Permission")
-                    }
-                } else {
-                    Text(
-                        text = if (isServiceRunning) "Service Active" else "Service Inactive",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (isServiceRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = if (isServiceRunning)
-                            "The floating bubble is ready. Tap it to start recording."
-                        else
-                            "Start the service to enable the floating bubble.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Button(
-                        onClick = if (isServiceRunning) onStopService else onStartService,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isServiceRunning)
-                                MaterialTheme.colorScheme.surfaceVariant
-                            else
-                                MaterialTheme.colorScheme.primary,
-                            contentColor = if (isServiceRunning)
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            else
-                                MaterialTheme.colorScheme.onPrimary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = if (isServiceRunning) Icons.Default.Stop else Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = if (isServiceRunning) "Stop Service" else "Start Service",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-        // Recent Notes Section
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Recent Notes",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
+            // Search Bar (Visual)
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.outline
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Search",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-        androidx.compose.animation.AnimatedContent(
-            targetState = recentNotes.isEmpty(),
-            transitionSpec = {
-                androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(300)) togetherWith
-                        androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(300))
-            },
-            label = "RecentNotesTransition"
-        ) { isEmpty ->
-            if (isEmpty) {
-                EmptyRecentNotes(modifier = Modifier.fillMaxWidth().weight(1f))
+            // Recent Notes List
+            if (recentNotes.isEmpty()) {
+                EmptyRecentNotes(modifier = Modifier.weight(1f))
             } else {
-                RecentNotesList(notes = recentNotes, onDeleteNote = onDeleteNote, modifier = Modifier.fillMaxWidth().weight(1f))
+                AnimatedContent(
+                    targetState = recentNotes.isEmpty(),
+                    transitionSpec = {
+                        fadeIn(tween(300)) togetherWith fadeOut(tween(300))
+                    },
+                    label = "RecentNotesTransition"
+                ) { isEmpty ->
+                    if (isEmpty) {
+                        EmptyRecentNotes(modifier = Modifier.fillMaxWidth().weight(1f))
+                    } else {
+                        RecentNotesList(notes = recentNotes, onDeleteNote = onDeleteNote, modifier = Modifier.fillMaxWidth().weight(1f))
+                    }
+                }
             }
         }
     }
@@ -193,29 +156,31 @@ fun MainScreen(
 
 @Composable
 private fun EmptyRecentNotes(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                shape = RoundedCornerShape(16.dp)
-            ),
-        contentAlignment = Alignment.Center
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = Icons.Default.Description,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(48.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "No recent notes yet",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-            )
-        }
+        Icon(
+            imageVector = Icons.Default.Mic,
+            contentDescription = null,
+            modifier = Modifier
+                .size(64.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                .padding(16.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "No recent notes",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = "Tap the record button to start",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.outline
+        )
     }
 }
 
@@ -223,12 +188,12 @@ private fun EmptyRecentNotes(modifier: Modifier = Modifier) {
 private fun RecentNotesList(notes: List<String>, onDeleteNote: (String) -> Unit, modifier: Modifier = Modifier) {
     LazyColumn(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(bottom = 100.dp) // Space for FAB
     ) {
         items(
             items = notes,
-            key = { it } // Use note content as key since we ensure uniqueness
+            key = { it }
         ) { note ->
             RecentNoteItem(
                 note = note,
@@ -250,96 +215,132 @@ private fun RecentNoteItem(
 
     LaunchedEffect(isVisible) {
         if (!isVisible) {
-            kotlinx.coroutines.delay(300) // Wait for animation
+            delay(300) // Wait for animation
             onDelete()
         }
     }
 
-    androidx.compose.animation.AnimatedVisibility(
+    AnimatedVisibility(
         visible = isVisible,
-        exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut(),
+        exit = shrinkVertically() + fadeOut(),
         modifier = modifier
     ) {
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = note,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    horizontalArrangement = Arrangement.End,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Copy button
-                    FilledTonalIconButton(
-                        onClick = {
-                            val clipboard =
-                                context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = ClipData.newPlainText("FloatNote", note)
-                            clipboard.setPrimaryClip(clip)
-                            android.widget.Toast.makeText(
-                                context,
-                                "Copied to clipboard",
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
-                        },
-                        modifier = Modifier.size(40.dp)
+            Text(
+                text = "New Note", // Placeholder title
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Today", // Placeholder timestamp
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Note Content Card
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = note,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Actions Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.ContentCopy,
-                            contentDescription = "Copy",
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Share button
-                    FilledTonalIconButton(
-                        onClick = {
-                            val sendIntent = Intent().apply {
-                                action = Intent.ACTION_SEND
-                                putExtra(Intent.EXTRA_TEXT, note)
-                                type = "text/plain"
+                        // Play Button (Visual)
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.surface, // White/Black
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                            modifier = Modifier.height(32.dp).clickable { }
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Play",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "00:00",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
                             }
-                            val shareIntent = Intent.createChooser(sendIntent, null)
-                            context.startActivity(shareIntent)
-                        },
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Share,
-                            contentDescription = "Share",
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                        }
+                        
+                        Spacer(modifier = Modifier.weight(1f))
+                        
+                        // Copy
+                        IconButton(
+                            onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = ClipData.newPlainText("FloatNote", note)
+                                clipboard.setPrimaryClip(clip)
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = "Copy",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                        
+                        // Share
+                        IconButton(
+                            onClick = {
+                                val sendIntent: Intent = Intent().apply {
+                                    action = Intent.ACTION_SEND
+                                    putExtra(Intent.EXTRA_TEXT, note)
+                                    type = "text/plain"
+                                }
+                                val shareIntent = Intent.createChooser(sendIntent, null)
+                                context.startActivity(shareIntent)
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        }
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Delete button
-                    FilledTonalIconButton(
-                        onClick = { isVisible = false },
-                        modifier = Modifier.size(40.dp),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            modifier = Modifier.size(20.dp)
-                        )
+                        // Delete
+                        IconButton(
+                            onClick = { isVisible = false },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        }
                     }
                 }
             }
@@ -347,83 +348,30 @@ private fun RecentNoteItem(
     }
 }
 
-// Previews
-@Preview(showBackground = true, name = "Main - No Permission")
+@Preview(showBackground = true)
 @Composable
-private fun PreviewMainNoPermission() {
-    FloatNoteTheme(darkTheme = false) {
+private fun PreviewMain() {
+    FloatNoteTheme {
         MainScreen(
-            hasPermission = false,
-            isServiceRunning = false,
-            recentNotes = emptyList(),
-            onDeleteNote = {},
-            onRequestPermission = {},
-            onStartService = {},
-            onStopService = {}
+            serviceState = false,
+            onToggleService = {},
+            onOpenSettings = {},
+            recentNotes = listOf("Note 1", "Note 2"),
+            onDeleteNote = {}
         )
     }
 }
 
-@Preview(showBackground = true, name = "Main - Empty Notes")
-@Composable
-private fun PreviewMainEmptyNotes() {
-    FloatNoteTheme(darkTheme = false) {
-        MainScreen(
-            hasPermission = true,
-            isServiceRunning = false,
-            recentNotes = emptyList(),
-            onDeleteNote = {},
-            onRequestPermission = {},
-            onStartService = {},
-            onStopService = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "Main - Service Running")
-@Composable
-private fun PreviewMainServiceRunning() {
-    FloatNoteTheme(darkTheme = false) {
-        MainScreen(
-            hasPermission = true,
-            isServiceRunning = true,
-            recentNotes = listOf("Example note one", "Example note two"),
-            onDeleteNote = {},
-            onRequestPermission = {},
-            onStartService = {},
-            onStopService = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "Main - Populated")
-@Composable
-private fun PreviewMainPopulated() {
-    FloatNoteTheme(darkTheme = false) {
-        MainScreen(
-            hasPermission = true,
-            isServiceRunning = false,
-            recentNotes = List(5) { "Sample note #$it with some longer content to show ellipsis behavior" },
-            onDeleteNote = {},
-            onRequestPermission = {},
-            onStartService = {},
-            onStopService = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "Main - Dark Mode", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Preview(showBackground = true)
 @Composable
 private fun PreviewMainDark() {
     FloatNoteTheme(darkTheme = true) {
         MainScreen(
-            hasPermission = true,
-            isServiceRunning = false,
+            serviceState = false,
+            onToggleService = {},
+            onOpenSettings = {},
             recentNotes = emptyList(),
-            onDeleteNote = {},
-            onRequestPermission = {},
-            onStartService = {},
-            onStopService = {}
+            onDeleteNote = {}
         )
     }
 }

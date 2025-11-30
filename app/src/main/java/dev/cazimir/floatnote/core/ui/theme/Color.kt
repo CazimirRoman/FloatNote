@@ -30,3 +30,10 @@ val DarkBackground = Color(0xFF000000)
 // Glassmorphism Colors
 val GlassLight = Color(0xCCFFFFFF)
 val GlassDark = Color(0xCC1E1E1E)
+
+// Voicenotes Inspired Colors
+val VoicenotesBlack = Color(0xFF000000)
+val VoicenotesWhite = Color(0xFFFFFFFF)
+val VoicenotesGray = Color(0xFFF2F2F2) // Light gray background
+val VoicenotesDarkGray = Color(0xFF8E8E93) // Secondary text
+val VoicenotesRecordRed = Color(0xFFFF3B30) // Record button accent

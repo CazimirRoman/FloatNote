@@ -8,28 +8,39 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = BrandPurpleLight,
-    secondary = BrandPurpleLight, // Changed from orange to purple for better contrast
-    tertiary = BrandOrange, // Orange as tertiary/accent
-    primaryContainer = BrandPurpleDark,
-    onPrimaryContainer = BrandPurpleLight,
-    secondaryContainer = BrandPurple.copy(alpha = 0.2f),
-    onSecondaryContainer = BrandPurpleLight,
-    error = BrandOrange // Use orange for errors/warnings as accent
+    primary = VoicenotesWhite,
+    secondary = VoicenotesWhite,
+    tertiary = VoicenotesRecordRed,
+    background = VoicenotesBlack,
+    surface = VoicenotesBlack,
+    onPrimary = VoicenotesBlack,
+    onSecondary = VoicenotesBlack,
+    onTertiary = VoicenotesWhite,
+    onBackground = VoicenotesWhite,
+    onSurface = VoicenotesWhite,
+    surfaceVariant = Color(0xFF1C1C1E), // Slightly lighter black for cards
+    onSurfaceVariant = VoicenotesWhite,
+    outline = VoicenotesDarkGray
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = BrandPurple,
-    secondary = BrandPurple, // Changed from orange to purple for better contrast
-    tertiary = BrandOrange, // Orange as tertiary/accent
-    primaryContainer = BrandPurpleLight,
-    onPrimaryContainer = BrandPurpleDark,
-    secondaryContainer = BrandPurpleLight.copy(alpha = 0.3f),
-    onSecondaryContainer = BrandPurpleDark,
-    error = BrandOrange // Use orange for errors/warnings as accent
+    primary = VoicenotesBlack,
+    secondary = VoicenotesBlack,
+    tertiary = VoicenotesRecordRed,
+    background = VoicenotesWhite,
+    surface = VoicenotesWhite,
+    onPrimary = VoicenotesWhite,
+    onSecondary = VoicenotesWhite,
+    onTertiary = VoicenotesWhite,
+    onBackground = VoicenotesBlack,
+    onSurface = VoicenotesBlack,
+    surfaceVariant = VoicenotesGray, // Light gray for cards
+    onSurfaceVariant = VoicenotesBlack,
+    outline = VoicenotesDarkGray
 )
 
 @Composable

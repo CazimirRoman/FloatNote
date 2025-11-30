@@ -120,14 +120,19 @@ class MainActivity : ComponentActivity() {
                             SettingsScreen(onNavigateBack = { showSettings = false })
                         } else {
                             MainScreen(
-                                hasPermission = hasOverlayPermission,
-                                isServiceRunning = isServiceRunning,
+                                serviceState = isServiceRunning,
+                                onToggleService = {
+                                    if (isServiceRunning) stopBubbleService() else startBubbleService()
+                                },
+                                onOpenSettings = { showSettings = true },
                                 recentNotes = recentNotes,
                                 onDeleteNote = { note -> settingsViewModel.deleteRecentNote(note) },
+                                // Legacy params for compatibility if needed by internal logic, but we use the new ones primarily
+                                hasPermission = hasOverlayPermission,
+                                isServiceRunning = isServiceRunning,
                                 onRequestPermission = { requestOverlayPermission() },
                                 onStartService = { startBubbleService() },
-                                onStopService = { stopBubbleService() },
-                                modifier = Modifier.padding(innerPadding)
+                                onStopService = { stopBubbleService() }
                             )
                         }
                     }
