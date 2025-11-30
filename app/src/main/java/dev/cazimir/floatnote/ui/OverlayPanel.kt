@@ -51,7 +51,7 @@ fun OverlayPanel(
 ) {
     val configuration = LocalConfiguration.current
     val screenHeightDp = configuration.screenHeightDp
-    val maxPanelHeight = (screenHeightDp * 0.85f).dp // Increased max height
+    val maxPanelHeight = (screenHeightDp * 0.50f).dp // Increased max height
 
     // Full screen box to handle centering and outside clicks
     Box(
